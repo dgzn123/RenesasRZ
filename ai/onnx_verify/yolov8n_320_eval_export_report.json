@@ -1,0 +1,330 @@
+{
+  "model": "YOLOv8n-320",
+  "source_pt": "C:\\Users\\Heda\\Desktop\\index\\ai\\runs\\yolov8n_320\\weights\\best.pt",
+  "exported_pt": "C:\\Users\\Heda\\Desktop\\index\\ai\\export\\best.pt",
+  "exported_onnx": "C:\\Users\\Heda\\Desktop\\index\\ai\\export\\best.onnx",
+  "onnx_size_mb": 11.554,
+  "validation": {
+    "precision": 0.8637453901016711,
+    "recall": 0.8414688463275721,
+    "map50": 0.8389766471699489,
+    "map50_95": 0.4605540563977451,
+    "speed_ms": {
+      "preprocess": 0.24813847619043372,
+      "inference": 0.8660609523812604,
+      "loss": 0.0003523809521409151,
+      "postprocess": 0.8202165714296175
+    }
+  },
+  "onnx_benchmark_local_cpu": {
+    "provider": "CPUExecutionProvider",
+    "onnxruntime_providers_available": [
+      "TensorrtExecutionProvider",
+      "CUDAExecutionProvider",
+      "CPUExecutionProvider"
+    ],
+    "input": {
+      "name": "images",
+      "shape": [
+        1,
+        3,
+        320,
+        320
+      ],
+      "type": "tensor(float)"
+    },
+    "output": {
+      "name": "output0",
+      "shape": [
+        1,
+        8,
+        2100
+      ],
+      "type": "tensor(float)"
+    },
+    "samples": 59,
+    "preprocess_ms": {
+      "min": 2.202799999963645,
+      "mean": 2.868903389840251,
+      "median": 2.586400000041067,
+      "p95": 3.654459999995651,
+      "max": 7.617100000061328
+    },
+    "inference_ms": {
+      "min": 4.211100000020451,
+      "mean": 9.469989830501802,
+      "median": 8.072399999946356,
+      "p95": 18.062030000032788,
+      "max": 25.92020000008688
+    },
+    "postprocess_ms": {
+      "min": 0.2238000000716056,
+      "mean": 0.3054610169552473,
+      "median": 0.25300000004335743,
+      "p95": 0.6892400000879205,
+      "max": 1.2487999999848398
+    },
+    "total_ms": {
+      "min": 6.8755999999439155,
+      "mean": 12.644354237297302,
+      "median": 11.308900000017275,
+      "p95": 21.44708999996965,
+      "max": 33.65720000010697
+    },
+    "detections_per_image": {
+      "min": 2,
+      "mean": 3.7966101694915255,
+      "median": 4,
+      "p95": 5.0,
+      "max": 5
+    },
+    "sample_detections": [
+      {
+        "image": "D:\\Code\\Qiansai\\dataset7000\\images\\test\\5-11-00-14LAB11CP510-2_jpg.rf.a992eb69c31e6605e4862cfe1d04c268.jpg",
+        "detections": [
+          {
+            "class_id": 2,
+            "class_name": "start",
+            "confidence": 0.8407942056655884,
+            "box_xyxy": [
+              145.77108764648438,
+              465.15411376953125,
+              178.03375244140625,
+              495.75006103515625
+            ]
+          },
+          {
+            "class_id": 1,
+            "class_name": "end",
+            "confidence": 0.5701560378074646,
+            "box_xyxy": [
+              465.02130126953125,
+              463.64910888671875,
+              492.0093994140625,
+              490.0003662109375
+            ]
+          },
+          {
+            "class_id": 3,
+            "class_name": "tip",
+            "confidence": 0.5267267227172852,
+            "box_xyxy": [
+              62.04108428955078,
+              271.1631774902344,
+              77.39778900146484,
+              284.4469299316406
+            ]
+          },
+          {
+            "class_id": 0,
+            "class_name": "base",
+            "confidence": 0.5105956196784973,
+            "box_xyxy": [
+              304.1909484863281,
+              307.4134521484375,
+              332.9125671386719,
+              337.4666748046875
+            ]
+          },
+          {
+            "class_id": 1,
+            "class_name": "end",
+            "confidence": 0.4202898442745209,
+            "box_xyxy": [
+              463.80950927734375,
+              463.4412841796875,
+              523.4617309570312,
+              523.54052734375
+            ]
+          }
+        ]
+      },
+      {
+        "image": "D:\\Code\\Qiansai\\dataset7000\\images\\test\\11-09-00-14HLB10CP505-2_jpg.rf.38305f6f3abb2fd4d929e764b34c5ed9.jpg",
+        "detections": [
+          {
+            "class_id": 2,
+            "class_name": "start",
+            "confidence": 0.8185867071151733,
+            "box_xyxy": [
+              161.0802001953125,
+              465.3110046386719,
+              192.79461669921875,
+              495.0736999511719
+            ]
+          },
+          {
+            "class_id": 1,
+            "class_name": "end",
+            "confidence": 0.5593929886817932,
+            "box_xyxy": [
+              451.94146728515625,
+              453.697998046875,
+              478.95880126953125,
+              480.1243896484375
+            ]
+          },
+          {
+            "class_id": 0,
+            "class_name": "base",
+            "confidence": 0.4623914957046509,
+            "box_xyxy": [
+              292.5361328125,
+              309.8623046875,
+              333.84918212890625,
+              350.7681884765625
+            ]
+          },
+          {
+            "class_id": 1,
+            "class_name": "end",
+            "confidence": 0.3308308720588684,
+            "box_xyxy": [
+              452.0245361328125,
+              452.93133544921875,
+              520.6958618164062,
+              517.0150756835938
+            ]
+          },
+          {
+            "class_id": 3,
+            "class_name": "tip",
+            "confidence": 0.30692028999328613,
+            "box_xyxy": [
+              74.4595718383789,
+              319.3591003417969,
+              93.31684112548828,
+              336.4884338378906
+            ]
+          }
+        ]
+      },
+      {
+        "image": "D:\\Code\\Qiansai\\dataset7000\\images\\test\\1-11-00-14HTC11CT502-1_jpg.rf.a200a0e75df9a3c5eee6ccd42d571209.jpg",
+        "detections": [
+          {
+            "class_id": 2,
+            "class_name": "start",
+            "confidence": 0.8612107038497925,
+            "box_xyxy": [
+              152.927490234375,
+              425.48907470703125,
+              179.6759033203125,
+              452.19403076171875
+            ]
+          },
+          {
+            "class_id": 1,
+            "class_name": "end",
+            "confidence": 0.7408871650695801,
+            "box_xyxy": [
+              440.54534912109375,
+              417.18536376953125,
+              466.56427001953125,
+              442.27545166015625
+            ]
+          },
+          {
+            "class_id": 0,
+            "class_name": "base",
+            "confidence": 0.6516255140304565,
+            "box_xyxy": [
+              290.0556945800781,
+              283.006591796875,
+              321.3367614746094,
+              311.8028564453125
+            ]
+          },
+          {
+            "class_id": 3,
+            "class_name": "tip",
+            "confidence": 0.38931185007095337,
+            "box_xyxy": [
+              340.2239074707031,
+              101.10176086425781,
+              351.4969787597656,
+              114.02149963378906
+            ]
+          }
+        ]
+      },
+      {
+        "image": "D:\\Code\\Qiansai\\dataset7000\\images\\test\\6-14HSK40CT501_1_22-00_jpg.rf.d9851c00a88ea8e5fb6f8bf1d4560f90.jpg",
+        "detections": [
+          {
+            "class_id": 2,
+            "class_name": "start",
+            "confidence": 0.7986916899681091,
+            "box_xyxy": [
+              147.67221069335938,
+              492.5101318359375,
+              177.15573120117188,
+              520.2330322265625
+            ]
+          },
+          {
+            "class_id": 1,
+            "class_name": "end",
+            "confidence": 0.7945231199264526,
+            "box_xyxy": [
+              453.20843505859375,
+              482.8065185546875,
+              479.74676513671875,
+              507.65960693359375
+            ]
+          },
+          {
+            "class_id": 0,
+            "class_name": "base",
+            "confidence": 0.656765341758728,
+            "box_xyxy": [
+              289.1865234375,
+              343.57635498046875,
+              325.682861328125,
+              378.05621337890625
+            ]
+          }
+        ]
+      },
+      {
+        "image": "D:\\Code\\Qiansai\\dataset7000\\images\\test\\14-14HLB20CT501_2-3-_jpg.rf.14145d3217481a2acb24dc77f8687a1b.jpg",
+        "detections": [
+          {
+            "class_id": 3,
+            "class_name": "tip",
+            "confidence": 0.45201927423477173,
+            "box_xyxy": [
+              143.92152404785156,
+              144.92898559570312,
+              172.8088836669922,
+              174.69308471679688
+            ]
+          },
+          {
+            "class_id": 0,
+            "class_name": "base",
+            "confidence": 0.38017845153808594,
+            "box_xyxy": [
+              275.284912109375,
+              279.19873046875,
+              336.53863525390625,
+              336.4862060546875
+            ]
+          },
+          {
+            "class_id": 1,
+            "class_name": "end",
+            "confidence": 0.3038647472858429,
+            "box_xyxy": [
+              436.91986083984375,
+              408.40716552734375,
+              473.59503173828125,
+              441.57794189453125
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "note": "Local CPU latency is not RZ/G2L latency. Cortex-A55 should be measured on-device; this report verifies the model and ONNX path locally."
+}

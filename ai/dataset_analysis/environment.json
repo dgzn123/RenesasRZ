@@ -1,0 +1,13 @@
+{
+  "python": "3.11.15 | packaged by Anaconda, Inc. | (main, Mar 11 2026, 17:12:15) [MSC v.1942 64 bit (AMD64)]",
+  "python_executable": "D:\\Anaconda\\envs\\route-seg\\python.exe",
+  "torch": "2.11.0+cu128",
+  "torch_cuda": "12.8",
+  "cuda_available": true,
+  "ultralytics": "8.4.51",
+  "onnxruntime": "1.26.0",
+  "gpu": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+  "gpu_total_vram_mb": 12226,
+  "gpu_free_vram_mb": 11042,
+  "nvidia_smi": "NVIDIA GeForce RTX 5070 Ti Laptop GPU, 595.97, 12227 MiB, 9713 MiB"
+}

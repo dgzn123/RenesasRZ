@@ -1,0 +1,9 @@
+path: D:\Code\Qiansai\dataset7000
+train: images/train
+val: images/val
+test: images/test
+names:
+  0: base
+  1: end
+  2: start
+  3: tip
