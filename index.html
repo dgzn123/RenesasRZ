@@ -292,6 +292,15 @@
       display: flex; align-items: center; gap: 10px;
     }
 
+    /* 模型在线状态指示灯 */
+    .model-status { margin-left: auto; display: flex; align-items: center; gap: 5px; font-size: 0.72rem; font-weight: 500; white-space: nowrap; }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; background: #999; }
+    .status-dot.online { background: #22c55e; box-shadow: 0 0 4px #22c55e; }
+    .status-dot.offline { background: #ef4444; }
+    .status-dot.checking { background: #f59e0b; animation: dot-pulse 0.8s ease-in-out infinite alternate; }
+    @keyframes dot-pulse { from { opacity: 1; } to { opacity: 0.3; } }
+    .status-text { color: #6b7280; }
+
     /* Monitor tab */
     #tab-monitor { height: 100%; overflow: hidden; }
     #tab-monitor .monitor-grid {
@@ -985,6 +994,10 @@
                 <button class="stream-btn stop" id="btnMeterStop" onclick="stopMeterStream()">停止</button>
                 <button class="stream-btn" id="btnMeterLocate" onclick="locateMeter()" disabled>定位</button>
                 <button class="stream-btn" id="btnMeterCapture" onclick="meterCapture()" disabled>读数</button>
+                <span class="model-status" id="modelStatus">
+                  <span class="status-dot checking" id="modelStatusDot"></span>
+                  <span class="status-text" id="modelStatusText">检测中</span>
+                </span>
               </div>
               <div class="vision-camera">
                 <div class="cam-overlay" id="meterFps">-- fps</div>
@@ -1334,10 +1347,31 @@
       return fetch("/execute-command.php?command=" + encodeURIComponent("python3 /home/root/camera-server/capture.py &>/tmp/capture.log & echo $!>/tmp/capture.pid; sleep 2"));
     }
 
+    function checkModelStatus() {
+      var dot = document.getElementById("modelStatusDot");
+      var txt = document.getElementById("modelStatusText");
+      fetch("/meter-service-control.php?action=status")
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+          if (d.running || d.port_open) {
+            dot.className = "status-dot online";
+            txt.textContent = "模型在线";
+          } else {
+            dot.className = "status-dot offline";
+            txt.textContent = "模型离线";
+          }
+        })
+        .catch(function() {
+          dot.className = "status-dot offline";
+          txt.textContent = "模型离线";
+        });
+    }
+
     function startMeterPoll() {
       if (meterPollTimer) return;
       updateMeterStatus();
-      meterPollTimer = setInterval(updateMeterStatus, 1000);
+      checkModelStatus();
+      meterPollTimer = setInterval(function() { updateMeterStatus(); checkModelStatus(); }, 1000);
     }
 
     async function updateMeterStatus() {
@@ -1782,7 +1816,7 @@
       fetch("/cam-control.php?action=status").then(function(r){return r.json()}).then(function(s){
         if (s.running) refreshAllCamImgs();
       }).catch(function(){});
-      if (tabId === 'tab-meter') { startMeterPoll(); loadMeterHistory(); }
+      if (tabId === 'tab-meter') { startMeterPoll(); loadMeterHistory(); checkModelStatus(); }
       if (meterPollTimer && tabId !== 'tab-meter') { clearInterval(meterPollTimer); meterPollTimer = null; }
       if (tabId !== 'tab-meter') stopTagLocate();
     }
