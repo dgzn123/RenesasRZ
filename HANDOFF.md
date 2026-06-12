@@ -79,7 +79,7 @@
 
 - **方案**: Python3 直驱 V4L2 mmap IO，零 ffmpeg 依赖
 - **架构**: `capture.py:8080` 提供 `/stream` (MJPEG)、`/status` (JSON)、`/photo` (1080p 拍照)、`/snapshot` (当前帧 JPEG)
-- **拍照历史**: 实时监控页“拍照”调用 `http://renesas.local:8080/photo`，照片实际保存到开发板 `/home/root/camera-server/photos/`；网页拍照历史通过 `show-image.php?action=list&source=photo` 实时读取该目录，因此会与服务器文件夹对应
+- **拍照**: 实时监控页”拍照”调用 `http://renesas.local:8080/photo`，照片实际保存到开发板 `/home/root/camera-server/photos/`；仪表读数不走 photo，改走 `/snapshot` 直接抓 MJPEG 当前帧省 IO
 - **照片查看/管理**: `show-image.php?source=photo&file=photo_YYYYmmdd_HHMMSS.jpg` 从 `/home/root/camera-server/photos/` 读取；`show-image.php?action=delete&source=photo&file=...` 删除拍照历史照片；不带 `source=photo` 时仍用于仪表读数图像 `/home/root/ai/capture/`
 - **启停**: PHP `cam-control.php` 通过 PID 文件管理进程
 - **关键参数**: V4L2 ioctl 结构体 88 字节(v4l2_buffer)、208 字节(v4l2_format)
@@ -230,7 +230,7 @@
 - **性能注意**:
   - 开发板当前网页每次读数都会新起 Python 进程并加载两个 ONNX 模型。
   - 两阶段功能已跑通，但板端实测单次命令约 3 秒级，主要耗时在 Python/ONNX Runtime 初始化与模型加载。
-  - 若目标是稳定 `<500ms`，下一步应改成常驻推理服务：启动时加载 `meter_roi.onnx` 和 `best_points_320.onnx`，网页通过 HTTP 请求传图或文件名。
+  - 已上线常驻推理服务 `model_alwaysonline/meter_service.py:8086`，端到端 ~600ms。
 - **手动测试命令**:
   ```bash
   cd /home/root/ai
@@ -256,14 +256,15 @@
 
 ## 常驻推理服务（2026-06-11 上线，替代一次性脚本调用）
 
-- **问题**: 旧方案每次读数起新 Python 进程加载两个 ONNX 模型，实测 ~3500ms，其中 ~2500ms 花在冷启动
-- **方案**: `ai/model_alwaysonline/meter_service.py`，模型常驻内存，HTTP 同步返回
+- **问题**: 旧方案每次读数起新 Python 进程加载两个 ONNX 模型，实测 ~3500ms，其中 ~2500ms 花在冷启动；拍照后关摄像头在 stop/start 间各等 2~5s
+- **方案**: `ai/model_alwaysonline/meter_service.py`，模型常驻内存，HTTP 同步返回；拍照改走 `/snapshot` 直接抓 MJPEG 帧，相机全程不关停
 - **端口**: 8086（和摄像头 8080、雷达 8082、串口 8084 并列）
 - **端点**: `/health`（存活）、`/status`（统计+平均延迟）、`/read?image=...&min=...&max=...&divisions=...`（推理）
 - **架构**: 导入父目录 `meter_reader_onnx.py` 的 `detect_roi`/`detect_points`/`compute_reading` 等函数，外层包 HTTP server
 - **内存**: 空闲 ~160MB RSS（Python + ORT + 双模型权重 + arena）
-- **延迟**: 纯推理 ~400-1200ms（vs 旧方案 ~3500ms）
-- **PHP 编排**: `meter-read.php?action=capture` 改为 HTTP 同步调用 `127.0.0.1:8086/read`，不再 shell_exec + poll
+- **延迟**: 纯推理 ~400-1200ms，端到端（拍照+推理）~600ms（vs 旧方案 ~3500ms）
+- **读数精度**: 保留小数点后 2 位
+- **PHP 编排**: `meter-read.php?action=capture` 通过 `/snapshot` 抓帧直写 `/home/root/ai/capture/`，HTTP 同步调用 `127.0.0.1:8086/read`，不再 shell_exec + poll，不再中途停摄像头
 - **启停控制**: `meter-service-control.php?action=start|stop|status`，模式同 `cam-control.php`
 - **网页指示**: 仪表读数标题栏右侧绿/红圆点实时显示服务在线状态
 - **PID 文件**: `/tmp/meter_service.pid`（自动清理）
