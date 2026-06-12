@@ -301,17 +301,17 @@
     @keyframes dot-pulse { from { opacity: 1; } to { opacity: 0.3; } }
     .status-text { color: #6b7280; }
 
-    /* 实时曲线面板 — 默认隐藏，JS 设绝对坐标 + 对角展开 */
+    /* 实时曲线面板 — JS 设绝对坐标 + 圆形展开 */
     .meter-curve-panel {
       position: absolute; visibility: hidden;
-      clip-path: polygon(100% 0, 100% 0, 100% 0, 100% 0);
+      clip-path: circle(0% at 100% 0);
       transition: clip-path 0.5s ease;
       background: var(--color-bg); border: 1px solid var(--color-border);
       border-radius: var(--radius); padding: 16px 20px; z-index: 10;
       display: flex; flex-direction: column; pointer-events: none;
     }
     .meter-curve-panel.open {
-      clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+      clip-path: circle(141% at 100% 0);
       pointer-events: auto; visibility: visible;
     }
     .meter-curve-panel canvas { flex: 1; display: block; width: 100%; min-height: 0; }
@@ -439,8 +439,8 @@
     .meter-side .panel-title { margin-bottom:10px; }
     .meter-side .reading-display { padding:18px 20px; }
     .meter-side .reading-value { font-size:56px; }
-    .meter-terminal-panel { display:flex; flex-direction:column; flex:0 0 188px; min-height:188px; overflow:hidden; }
-    .meter-terminal-panel .terminal-window { flex:1 1 0; height:auto; min-height:0; max-height:none !important; overflow-y:auto; }
+    .meter-terminal-panel { display:flex; flex-direction:column; flex:0 0 132px; min-height:0; overflow:hidden; }
+    .meter-terminal-panel .terminal-window { flex:1 1 0; height:auto; min-height:0; max-height:none !important; overflow-y:auto; font-size:0.72rem; line-height:1.5; }
     .meter-history-panel { grid-column:1 / -1; margin-top:0; }
     #tagPreviewBox { flex:1 1 170px !important; min-height:160px !important; max-height:220px; overflow:hidden; }
     #tagContent { min-height:0; overflow:hidden; }
@@ -1071,13 +1071,14 @@
                 <div class="panel-title" style="margin-bottom:8px;">仪表曲线 <span id="realtimeCount">0 点</span></div>
                 <canvas id="realtimeCanvas"></canvas>
               </div>
-              <!-- Inference terminal — fixed height -->
+              <!-- Inference terminal -->
               <div class="panel meter-terminal-panel">
                 <div class="panel-title">推理终端</div>
-                <div class="terminal-window" id="meterTerminal" style="max-height:160px; overflow-y:auto;">
+                <div class="terminal-window" id="meterTerminal" style="max-height:120px; overflow-y:auto;">
                   <p class="log-sys">[SYS] 等待读数指令...</p>
                 </div>
               </div>
+            </div><!-- /meter-side -->
 
             <div class="panel meter-history-panel">
               <div class="panel-title">读数历史</div>
