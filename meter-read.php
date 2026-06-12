@@ -46,7 +46,7 @@ if ($action === 'delete') {
     exit;
 }
 
-// ── Capture ────────────────────────────────────────────────
+// ── Capture (uses resident inference service) ──────────────
 if ($action === 'capture') {
     $photo_json = @file_get_contents('http://127.0.0.1:8080/photo');
     if (!$photo_json) {
@@ -75,35 +75,78 @@ if ($action === 'capture') {
     $div  = intval($_GET['divisions'] ?? 29);
     $time = $_GET['time'] ?? date('Y-m-d H:i:s');
 
-    $id       = uniqid('meter_');
-    $log_file = "/home/root/ai/output/$id.log";
+    // 调用常驻推理服务（HTTP 同步调用，不再启动一次性进程）
+    $img_path = '/home/root/ai/capture/' . $filename;
+    $svc_url  = "http://127.0.0.1:8086/read?"
+              . "image=" . urlencode($img_path)
+              . "&min=$mn&max=$mx&divisions=$div"
+              . "&conf=0.05&roi_conf=0.1";
 
-    $cmd  = "cd /home/root/ai && ";
-    $cmd .= "python3 meter_reader_onnx.py ";
-    $cmd .= "--roi-yolo meter_roi.onnx --yolo best_points_320.onnx ";
-    $cmd .= "--conf 0.05 --roi-conf 0.1 ";
-    $cmd .= "--image capture/$filename ";
-    $cmd .= "--min $mn --max $mx --divisions $div ";
-    $cmd .= "> $log_file 2>&1 & echo $!";
-
-    $pid = intval(trim(shell_exec($cmd)));
-    if (!$pid) {
-        echo json_encode(['ok' => false, 'error' => '启动推理失败']);
+    $result_json = @file_get_contents($svc_url);
+    if (!$result_json) {
+        echo json_encode(['ok' => false, 'error' => '推理服务未启动，请先开启常驻推理服务 (8086)']);
+        exit;
+    }
+    $result = json_decode($result_json, true);
+    if (!$result || empty($result['success'])) {
+        $err = $result['error'] ?? '推理返回异常';
+        echo json_encode(['ok' => false, 'error' => $err]);
         exit;
     }
 
-    file_put_contents("/tmp/$id.json", json_encode([
-        'pid'      => $pid,
-        'log_file' => $log_file,
-        'image'    => $filename,
-        'min'      => $mn,
-        'max'      => $mx,
-        'divs'     => $div,
-        'time'     => $time,
-        'started'  => time()
-    ]));
+    $reading = $result['reading'];
+    $elapsed = $result['elapsed_ms'] ?? 0;
 
-    echo json_encode(['ok' => true, 'status' => 'running', 'id' => $id]);
+    // 构造推理终端日志
+    $log_lines = [];
+    if (!empty($result['points'])) {
+        foreach (['base','end','start','tip'] as $k) {
+            if (isset($result['points'][$k])) {
+                $p = $result['points'][$k];
+                $log_lines[] = "[SYS] $k: center=({$p['center'][0]:.1f}, {$p['center'][1]:.1f}), conf={$p['confidence']:.3f}";
+            }
+        }
+    }
+    if (!empty($result['geometry']['direction'])) {
+        $log_lines[] = "[SYS] Direction: {$result['geometry']['direction']}";
+    }
+    if (!empty($result['geometry']['tick_float'])) {
+        $log_lines[] = "[SYS] Fraction: {$result['geometry']['fraction']:.4f}, tick={$result['geometry']['tick_float']:.2f}";
+    }
+    $log_lines[] = str_repeat('=', 40);
+    $log_lines[] = "Reading: {$reading}  (range $mn~$mx)";
+    $log_lines[] = str_repeat('=', 40);
+    $log = implode("\n", $log_lines);
+
+    // 写入历史
+    $history   = get_history();
+    $entry     = [
+        'time'        => $time,
+        'reading'     => $reading,
+        'success'     => true,
+        'image'       => $filename,
+        'min'         => $mn,
+        'max'         => $mx,
+        'divs'        => $div,
+        'elapsed_ms'  => $elapsed
+    ];
+    $history[] = $entry;
+    save_history($history);
+
+    // 保存结构化推理结果
+    $result_file = '/home/root/ai/output/' . pathinfo($filename, PATHINFO_FILENAME) . '.json';
+    file_put_contents($result_file,
+        json_encode($entry, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+
+    echo json_encode([
+        'ok'         => true,
+        'status'     => 'done',
+        'reading'    => $reading,
+        'elapsed_ms' => $elapsed,
+        'time'       => $time,
+        'log'        => $log,
+        'history'    => array_reverse(get_history())
+    ]);
     exit;
 }
 
