@@ -67,9 +67,7 @@ if ($action === 'capture') {
         exit;
     }
 
-    // 拍照完成后释放摄像头，避免推理期间 V4L2/USB 资源持续占用。
-    @file_get_contents('http://127.0.0.1/cam-control.php?action=stop');
-
+    // 推理期间摄像头保持运行（500ms 级推理不再需要释放 USB 资源）
     $mn   = floatval($_GET['min']  ?? 0);
     $mx   = floatval($_GET['max']  ?? 6);
     $div  = intval($_GET['divisions'] ?? 29);
@@ -94,7 +92,7 @@ if ($action === 'capture') {
         exit;
     }
 
-    $reading = $result['reading'];
+    $reading = round($result['reading'], 2);
     $elapsed = $result['elapsed_ms'] ?? 0;
 
     // 构造推理终端日志

@@ -1443,11 +1443,8 @@
       document.getElementById("btnMeterCapture").disabled = true;
     }
 
-    async function restoreMeterCamera() {
-      try {
-        await fetch("/cam-control.php?action=start");
-        refreshAllCamImgs();
-      } catch(ex) {}
+    function restoreMeterCamera() {
+      // 摄像头在推理期间保持运行，只需重置状态
       meterCapturing = false;
       updateMeterStatus();
     }
@@ -1551,7 +1548,7 @@
           if (overlay) overlay.style.display = "none"; if (bar) bar.style.width = "0%";
           if (placeholder) placeholder.style.display = "none";
           showToast("读数失败: " + (d1.error || "unknown"));
-          if (btn) btn.disabled = false; await restoreMeterCamera(); return;
+          if (btn) btn.disabled = false; restoreMeterCamera(); return;
         }
 
         // 推理完成
@@ -1570,14 +1567,14 @@
           if (overlay) overlay.style.display = "none"; if (bar) bar.style.width = "0%";
           if (placeholder) placeholder.style.display = "none";
         }, 1500);
-        if (btn) btn.disabled = false; loadMeterHistory(); await restoreMeterCamera(); startMeterPoll();
+        if (btn) btn.disabled = false; loadMeterHistory(); restoreMeterCamera(); startMeterPoll();
       } catch(e) {
         clearInterval(termTimer);
         document.getElementById("meterLoadingTrack").style.display = "none";
         if (overlay) overlay.style.display = "none"; if (bar) bar.style.width = "0%";
         if (placeholder) placeholder.style.display = "none";
         showToast("读数失败: 无法连接服务");
-        if (btn) btn.disabled = false; await restoreMeterCamera();
+        if (btn) btn.disabled = false; restoreMeterCamera();
       }
     }
 

@@ -101,7 +101,7 @@ def do_inference(image_path, min_val, max_val, divisions,
 
     result = {
         "success": True,
-        "reading": reading_info["reading"],
+        "reading": round(reading_info["reading"], 2),
         "min": min_val,
         "max": max_val,
         "divisions": divisions,
