@@ -276,6 +276,7 @@ def main():
     print(f"PID: {os.getpid()}  (file: {PID_FILE})", flush=True)
 
     # ── Start server ─────────────────────────────────────────────────
+    ThreadingHTTPServer.allow_reuse_address = True
     started = time.time()
     server = ThreadingHTTPServer((args.host, args.port), MeterHandler)
     print(f"Listening on http://{args.host}:{args.port}", flush=True)
