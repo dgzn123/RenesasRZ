@@ -301,9 +301,9 @@
     @keyframes dot-pulse { from { opacity: 1; } to { opacity: 0.3; } }
     .status-text { color: #6b7280; }
 
-    /* 实时曲线面板 —— 绝对定位，clip-path 从右上到左下对角展开 */
+    /* 实时曲线面板 — 默认隐藏，JS 设绝对坐标 + 对角展开 */
     .meter-curve-panel {
-      position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+      position: absolute; visibility: hidden;
       clip-path: polygon(100% 0, 100% 0, 100% 0, 100% 0);
       transition: clip-path 0.5s ease;
       background: var(--color-bg); border: 1px solid var(--color-border);
@@ -312,7 +312,7 @@
     }
     .meter-curve-panel.open {
       clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
-      pointer-events: auto;
+      pointer-events: auto; visibility: visible;
     }
     .meter-curve-panel canvas { flex: 1; display: block; width: 100%; min-height: 0; }
     #realtimeCount { font-size: 0.72rem; color: var(--color-text-secondary); font-weight: 500; }
@@ -434,7 +434,7 @@
     .meter-video-panel { display:flex; flex-direction:column; min-height:0; height:100%; max-height:700px; align-self:stretch; margin-bottom:0; overflow:hidden; }
     .meter-video-panel .vision-camera { flex:1 1 0; min-height:0; height:auto; aspect-ratio:auto; overflow:hidden; }
     .meter-video-panel .vision-camera img { object-fit:cover; }
-    .meter-side { display:flex; flex-direction:column; gap:24px; min-height:0; height:700px; max-height:700px; flex:1; overflow:visible; padding-bottom:0; box-sizing:border-box; }
+    .meter-side { display:flex; flex-direction:column; gap:24px; min-height:0; height:700px; max-height:700px; flex:1; overflow:visible; padding-bottom:0; box-sizing:border-box; position:relative; }
     .meter-side .panel { margin-bottom:0; }
     .meter-side .panel-title { margin-bottom:10px; }
     .meter-side .reading-display { padding:18px 20px; }
@@ -1054,33 +1054,30 @@
                 </div>
               </div>
 
-              <!-- Tag + Curve + Terminal 容器 -->
-              <div style="display:flex; flex-direction:column; flex:1; min-height:0; position:relative;">
-                <!-- Tag locate panel — always visible -->
-                <div class="panel" id="tagPreviewBox" style="flex:1; display:flex; flex-direction:column; position:relative; overflow:hidden; min-height:0; margin-bottom:0;">
-                  <div class="panel-title">Tag 定位 <span id="tagPanelStatus" style="font-size:0.75rem;color:var(--color-text-secondary);font-weight:500;">未启动</span></div>
-                  <div id="tagContent" style="flex:1; display:flex; align-items:center; justify-content:center;">
-                    <div id="tagPreviewInfo" style="font-size:0.78rem; color:var(--color-text-secondary); line-height:1.6; text-align:center;">未启动</div>
-                  </div>
-                  <div id="tagLocateOverlay" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; display:none; z-index:5;">
-                    <div id="tagLocateFill" style="position:absolute; top:0; left:0; height:100%; width:0%; background:var(--color-primary);"></div>
-                    <div id="tagLocateLabelBg" style="position:absolute; top:50%; left:0; width:100%; text-align:center; transform:translateY(-50%); color:var(--color-primary); font-size:0.85rem; font-weight:700; letter-spacing:1px; line-height:1.6;"></div>
-                    <div id="tagLocateLabelFg" style="position:absolute; top:50%; left:0; width:100%; text-align:center; transform:translateY(-50%); color:#FFF; font-size:0.85rem; font-weight:700; letter-spacing:1px; line-height:1.6; clip-path:inset(0 100% 0 0);"></div>
-                  </div>
+              <!-- Tag locate panel — always visible -->
+              <div class="panel" id="tagPreviewBox" style="flex:1; display:flex; flex-direction:column; position:relative; overflow:hidden; min-height:0;">
+                <div class="panel-title">Tag 定位 <span id="tagPanelStatus" style="font-size:0.75rem;color:var(--color-text-secondary);font-weight:500;">未启动</span></div>
+                <div id="tagContent" style="flex:1; display:flex; align-items:center; justify-content:center;">
+                  <div id="tagPreviewInfo" style="font-size:0.78rem; color:var(--color-text-secondary); line-height:1.6; text-align:center;">未启动</div>
                 </div>
-                <!-- 实时曲线面板 — 绝对定位覆盖 Tag 和终端 -->
-                <div class="panel meter-curve-panel" id="realtimeCurvePanel">
-                  <div class="panel-title" style="margin-bottom:8px;">仪表曲线 <span id="realtimeCount">0 点</span></div>
-                  <canvas id="realtimeCanvas"></canvas>
+                <div id="tagLocateOverlay" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; display:none; z-index:5;">
+                  <div id="tagLocateFill" style="position:absolute; top:0; left:0; height:100%; width:0%; background:var(--color-primary);"></div>
+                  <div id="tagLocateLabelBg" style="position:absolute; top:50%; left:0; width:100%; text-align:center; transform:translateY(-50%); color:var(--color-primary); font-size:0.85rem; font-weight:700; letter-spacing:1px; line-height:1.6;"></div>
+                  <div id="tagLocateLabelFg" style="position:absolute; top:50%; left:0; width:100%; text-align:center; transform:translateY(-50%); color:#FFF; font-size:0.85rem; font-weight:700; letter-spacing:1px; line-height:1.6; clip-path:inset(0 100% 0 0);"></div>
                 </div>
-                <!-- Inference terminal — fixed height -->
-                <div class="panel meter-terminal-panel">
-                  <div class="panel-title">推理终端</div>
+              </div>
+              <!-- 实时曲线面板 — JS 动态绝对定位覆盖 Tag+终端 -->
+              <div class="panel meter-curve-panel" id="realtimeCurvePanel">
+                <div class="panel-title" style="margin-bottom:8px;">仪表曲线 <span id="realtimeCount">0 点</span></div>
+                <canvas id="realtimeCanvas"></canvas>
+              </div>
+              <!-- Inference terminal — fixed height -->
+              <div class="panel meter-terminal-panel">
+                <div class="panel-title">推理终端</div>
                 <div class="terminal-window" id="meterTerminal" style="max-height:160px; overflow-y:auto;">
                   <p class="log-sys">[SYS] 等待读数指令...</p>
                 </div>
               </div>
-            </div>
 
             <div class="panel meter-history-panel">
               <div class="panel-title">读数历史</div>
@@ -1685,6 +1682,18 @@
       var panel = document.getElementById("realtimeCurvePanel");
       var btn = document.getElementById("btnMeterRealtime");
       var canvas = document.getElementById("realtimeCanvas");
+      var tagPanel = document.getElementById("tagPreviewBox");
+      var termPanel = document.querySelector(".meter-terminal-panel");
+      var side = panel.closest(".meter-side");
+      if (tagPanel && termPanel && side) {
+        var sr = side.getBoundingClientRect();
+        var tr = tagPanel.getBoundingClientRect();
+        var br = termPanel.getBoundingClientRect();
+        panel.style.top  = (tr.top - sr.top) + "px";
+        panel.style.left = (tr.left - sr.left) + "px";
+        panel.style.width  = (tr.right - tr.left) + "px";
+        panel.style.height = (br.bottom - tr.top) + "px";
+      }
       realtimeRunning = true;
       realtimeData = [];
       realtimeSessionStart = new Date();
