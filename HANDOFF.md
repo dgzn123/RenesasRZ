@@ -43,6 +43,8 @@
 | `home.svg` | 网站图标 |
 | `design.png` | 首页左下角装饰图 |
 | `CuteSeek2.png` | 顶栏用户头像，需随 `index.html` 上传到网页目录 |
+| `model_alwaysonline/meter_service.py` | 常驻推理服务，加载 ONNX 模型常驻内存，8086 端口同步返回读数 |
+| `meter-service-control.php` | PHP，管理常驻推理服务启停 |
 | `HANDOFF.md` | 本文件 |
 
 ### 开发板
@@ -62,7 +64,10 @@
 | `/home/root/lidar/lidar-start.py` | 雷达服务（STL-19P） |
 | `/home/root/tag/tag-detect.py` | Tag 检测服务（ArUco） |
 | `/home/root/tag/tags_config.json` | Tag 配置映射 |
-| `/home/root/ai/` | AI 模型目录（best.onnx, shuffle_unet.onnx, meter_reader_onnx.py） |
+| `/www/matrix-gui-2.0/meter-service-control.php` | 常驻推理服务启停 |
+| `/home/root/ai/model_alwaysonline/meter_service.py` | 常驻推理服务 |
+| `/home/root/ai/meter_roi.onnx` | 第一阶段模型（表盘 ROI 检测） |
+| `/home/root/ai/best_points_320.onnx` | 第二阶段模型（四点检测） |
 | `/home/root/ai/capture/` | 仪表读数拍摄照片 |
 | `/home/root/ai/output/` | 仪表读数结果 |
 | `/tmp/capture.pid` | 摄像头进程 PID |
@@ -249,6 +254,28 @@
     ```
   - 同时需把 `meter-read.php` 调回旧参数 `--yolo best.onnx --unet shuffle_unet.onnx`
 
+## 常驻推理服务（2026-06-11 上线，替代一次性脚本调用）
+
+- **问题**: 旧方案每次读数起新 Python 进程加载两个 ONNX 模型，实测 ~3500ms，其中 ~2500ms 花在冷启动
+- **方案**: `ai/model_alwaysonline/meter_service.py`，模型常驻内存，HTTP 同步返回
+- **端口**: 8086（和摄像头 8080、雷达 8082、串口 8084 并列）
+- **端点**: `/health`（存活）、`/status`（统计+平均延迟）、`/read?image=...&min=...&max=...&divisions=...`（推理）
+- **架构**: 导入父目录 `meter_reader_onnx.py` 的 `detect_roi`/`detect_points`/`compute_reading` 等函数，外层包 HTTP server
+- **内存**: 空闲 ~160MB RSS（Python + ORT + 双模型权重 + arena）
+- **延迟**: 纯推理 ~400-1200ms（vs 旧方案 ~3500ms）
+- **PHP 编排**: `meter-read.php?action=capture` 改为 HTTP 同步调用 `127.0.0.1:8086/read`，不再 shell_exec + poll
+- **启停控制**: `meter-service-control.php?action=start|stop|status`，模式同 `cam-control.php`
+- **网页指示**: 仪表读数标题栏右侧绿/红圆点实时显示服务在线状态
+- **PID 文件**: `/tmp/meter_service.pid`（自动清理）
+- **手动测试**:
+  ```bash
+  cd /home/root/ai
+  python3 model_alwaysonline/meter_service.py --yolo best_points_320.onnx --roi-yolo meter_roi.onnx &
+  curl http://127.0.0.1:8086/health
+  curl "http://127.0.0.1:8086/read?image=/home/root/camera-server/photos/photo_20260610_141207.jpg&min=0&max=25&divisions=50&conf=0.05&roi_conf=0.1"
+  ```
+- **回退旧流程**: 部署老的 `meter-read.php` 和 `index.html` 即可恢复 shell_exec+poll 模式
+
 ## 常用命令
 
 ```bash
@@ -264,7 +291,13 @@ cd /home/root/tag && python3 tag-detect.py &
 # 检查各服务状态
 curl http://127.0.0.1:8082/status   # 雷达
 curl http://127.0.0.1:8085/locate   # tag检测
+curl http://127.0.0.1:8086/status   # 常驻推理
 curl http://127.0.0.1/cam-control.php?action=status  # 摄像头
+
+# 常驻推理服务启停
+curl "http://127.0.0.1/meter-service-control.php?action=start"
+curl "http://127.0.0.1/meter-service-control.php?action=stop"
+curl "http://127.0.0.1/meter-service-control.php?action=status"
 
 # 网页访问
 http://192.168.2.200/index.html
