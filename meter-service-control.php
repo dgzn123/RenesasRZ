@@ -30,7 +30,7 @@ if ($action === 'start') {
         exit;
     }
     $cmd = "cd /home/root/ai && python3 $script "
-         . "--yolo best_points_320.onnx --roi-yolo meter_roi.onnx "
+         . "--yolo best_points_320.onnx "
          . "> $logfile 2>&1 & echo $! > $pidfile";
     exec($cmd);
     // 等待端口 8086 打开
