@@ -257,12 +257,12 @@
 ## 常驻推理服务（2026-06-11 上线，替代一次性脚本调用）
 
 - **问题**: 旧方案每次读数起新 Python 进程加载两个 ONNX 模型，实测 ~3500ms，其中 ~2500ms 花在冷启动；拍照后关摄像头在 stop/start 间各等 2~5s
-- **方案**: `ai/model_alwaysonline/meter_service.py`，模型常驻内存，HTTP 同步返回；拍照改走 `/snapshot` 直接抓 MJPEG 帧，相机全程不关停
+- **方案**: `ai/model_alwaysonline/meter_service.py`，单模型 `best_points_320.onnx` 常驻内存，HTTP 同步返回；拍照改走 `/snapshot` 直接抓 MJPEG 帧，相机全程不关停
 - **端口**: 8086（和摄像头 8080、雷达 8082、串口 8084 并列）
 - **端点**: `/health`（存活）、`/status`（统计+平均延迟）、`/read?image=...&min=...&max=...&divisions=...`（推理）
-- **架构**: 导入父目录 `meter_reader_onnx.py` 的 `detect_roi`/`detect_points`/`compute_reading` 等函数，外层包 HTTP server
-- **内存**: 空闲 ~160MB RSS（Python + ORT + 双模型权重 + arena）
-- **延迟**: 纯推理 ~400-1200ms，端到端（拍照+推理）~600ms（vs 旧方案 ~3500ms）
+- **架构**: 导入父目录 `meter_reader_onnx.py` 的 `detect_points`/`compute_reading` 等函数，外层包 HTTP server；可选加 `--roi-yolo meter_roi.onnx` 启用 ROI 模型（如果仪表距离远/角度偏，需裁近景提升检测率，代价是多 ~1800ms）
+- **内存**: 空闲 ~100MB RSS（Python + ORT + 单模型权重 + arena；如开 ROI 则 ~160MB）
+- **延迟**: 端到端（拍照+推理）~600ms，其中纯推理 ~500ms（vs 旧方案 ~3500ms；如开 ROI 则 ~2700ms）
 - **读数精度**: 保留小数点后 2 位
 - **PHP 编排**: `meter-read.php?action=capture` 通过 `/snapshot` 抓帧直写 `/home/root/ai/capture/`，HTTP 同步调用 `127.0.0.1:8086/read`，不再 shell_exec + poll，不再中途停摄像头
 - **启停控制**: `meter-service-control.php?action=start|stop|status`，模式同 `cam-control.php`
@@ -271,9 +271,9 @@
 - **手动测试**:
   ```bash
   cd /home/root/ai
-  python3 model_alwaysonline/meter_service.py --yolo best_points_320.onnx --roi-yolo meter_roi.onnx &
+  python3 model_alwaysonline/meter_service.py --yolo best_points_320.onnx &
   curl http://127.0.0.1:8086/health
-  curl "http://127.0.0.1:8086/read?image=/home/root/camera-server/photos/photo_20260610_141207.jpg&min=0&max=25&divisions=50&conf=0.05&roi_conf=0.1"
+  curl "http://127.0.0.1:8086/read?image=/home/root/camera-server/photos/photo_20260610_141207.jpg&min=0&max=25&divisions=50&conf=0.05"
   ```
 - **回退旧流程**: 部署老的 `meter-read.php` 和 `index.html` 即可恢复 shell_exec+poll 模式
 
