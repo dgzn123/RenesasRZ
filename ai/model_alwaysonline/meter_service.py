@@ -269,16 +269,31 @@ def main():
         detect_roi(roi_session, np.zeros((640, 640, 3), dtype=np.uint8), 0.9)
     print("  OK\n", flush=True)
 
+    # ── Write PID file ───────────────────────────────────────────────
+    PID_FILE = "/tmp/meter_service.pid"
+    with open(PID_FILE, "w") as f:
+        f.write(str(os.getpid()))
+    print(f"PID: {os.getpid()}  (file: {PID_FILE})", flush=True)
+
     # ── Start server ─────────────────────────────────────────────────
     started = time.time()
     server = ThreadingHTTPServer((args.host, args.port), MeterHandler)
     print(f"Listening on http://{args.host}:{args.port}", flush=True)
     print("Endpoints: /health  /status  /read\n", flush=True)
 
+    def cleanup():
+        try:
+            os.remove(PID_FILE)
+        except OSError:
+            pass
+
     def shutdown(sig, frame):
         print("\nShutting down...", flush=True)
+        cleanup()
         server.shutdown()
 
+    import atexit
+    atexit.register(cleanup)
     signal.signal(signal.SIGINT, shutdown)
     signal.signal(signal.SIGTERM, shutdown)
 
