@@ -103,7 +103,7 @@ if ($action === 'capture') {
         foreach (['base','end','start','tip'] as $k) {
             if (isset($result['points'][$k])) {
                 $p = $result['points'][$k];
-                $log_lines[] = "[SYS] $k: center=({$p['center'][0]:.1f}, {$p['center'][1]:.1f}), conf={$p['confidence']:.3f}";
+                $log_lines[] = "[SYS] $k: center=(" . round($p['center'][0], 1) . ", " . round($p['center'][1], 1) . "), conf=" . round($p['confidence'], 3);
             }
         }
     }
@@ -111,7 +111,7 @@ if ($action === 'capture') {
         $log_lines[] = "[SYS] Direction: {$result['geometry']['direction']}";
     }
     if (!empty($result['geometry']['tick_float'])) {
-        $log_lines[] = "[SYS] Fraction: {$result['geometry']['fraction']:.4f}, tick={$result['geometry']['tick_float']:.2f}";
+        $log_lines[] = "[SYS] Fraction: " . round($result['geometry']['fraction'], 4) . ", tick=" . round($result['geometry']['tick_float'], 2);
     }
     $log_lines[] = str_repeat('=', 40);
     $log_lines[] = "Reading: {$reading}  (range $mn~$mx)";
