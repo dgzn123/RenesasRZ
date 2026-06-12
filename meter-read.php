@@ -48,22 +48,17 @@ if ($action === 'delete') {
 
 // ── Capture (uses resident inference service) ──────────────
 if ($action === 'capture') {
-    $photo_json = @file_get_contents('http://127.0.0.1:8080/photo');
-    if (!$photo_json) {
+    // 直接抓 MJPEG 当前帧，省掉 capture.py 写盘 + 拷贝两步
+    $jpeg = @file_get_contents('http://127.0.0.1:8080/snapshot');
+    if (!$jpeg) {
         echo json_encode(['ok' => false, 'error' => '相机服务未启动']);
         exit;
     }
-    $pd = json_decode($photo_json, true);
-    if (!$pd || empty($pd['ok'])) {
-        echo json_encode(['ok' => false, 'error' => '拍照失败']);
-        exit;
-    }
 
-    $filename = $pd['file'];
-    $src      = '/home/root/camera-server/photos/' . $filename;
-    $dst      = '/home/root/ai/capture/' . $filename;
-    if (!copy($src, $dst)) {
-        echo json_encode(['ok' => false, 'error' => '文件拷贝失败']);
+    $filename  = 'photo_' . date('Ymd_His') . '.jpg';
+    $dst       = '/home/root/ai/capture/' . $filename;
+    if (file_put_contents($dst, $jpeg) === false) {
+        echo json_encode(['ok' => false, 'error' => '保存照片失败']);
         exit;
     }
 
