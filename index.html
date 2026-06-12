@@ -301,6 +301,14 @@
     @keyframes dot-pulse { from { opacity: 1; } to { opacity: 0.3; } }
     .status-text { color: #6b7280; }
 
+    /* 实时曲线面板 —— 从 Tag 定位底部平滑展开 */
+    .meter-curve-panel { max-height: 0; overflow: hidden; transition: max-height 0.5s ease, padding 0.5s ease, margin 0.5s ease;
+      background: var(--color-bg); border: 1px solid transparent; border-radius: var(--radius);
+      padding: 0 20px; margin: 0; }
+    .meter-curve-panel.open { max-height: 360px; border-color: var(--color-border); padding: 16px 20px; margin-bottom: 18px; }
+    .meter-curve-panel canvas { display: block; width: 100%; height: 240px; }
+    #realtimeCount { font-size: 0.72rem; color: var(--color-text-secondary); font-weight: 500; }
+
     /* Monitor tab */
     #tab-monitor { height: 100%; overflow: hidden; }
     #tab-monitor .monitor-grid {
@@ -994,6 +1002,7 @@
                 <button class="stream-btn stop" id="btnMeterStop" onclick="stopMeterStream()">停止</button>
                 <button class="stream-btn" id="btnMeterLocate" onclick="locateMeter()" disabled>定位</button>
                 <button class="stream-btn" id="btnMeterCapture" onclick="meterCapture()" disabled>读数</button>
+                <button class="stream-btn" id="btnMeterRealtime" onclick="toggleRealtimeRead()" disabled>实时读取</button>
                 <span class="model-status" id="modelStatus">
                   <span class="status-dot checking" id="modelStatusDot"></span>
                   <span class="status-text" id="modelStatusText">检测中</span>
@@ -1048,6 +1057,11 @@
                   <div id="tagLocateLabelBg" style="position:absolute; top:50%; left:0; width:100%; text-align:center; transform:translateY(-50%); color:var(--color-primary); font-size:0.85rem; font-weight:700; letter-spacing:1px; line-height:1.6;"></div>
                   <div id="tagLocateLabelFg" style="position:absolute; top:50%; left:0; width:100%; text-align:center; transform:translateY(-50%); color:#FFF; font-size:0.85rem; font-weight:700; letter-spacing:1px; line-height:1.6; clip-path:inset(0 100% 0 0);"></div>
                 </div>
+              </div>
+              <!-- 实时曲线面板 -->
+              <div class="panel meter-curve-panel" id="realtimeCurvePanel">
+                <div class="panel-title" style="margin-bottom:6px;">仪表曲线 <span id="realtimeCount">0 点</span></div>
+                <canvas id="realtimeCanvas"></canvas>
               </div>
               <!-- Inference terminal — fixed height -->
               <div class="panel meter-terminal-panel">
@@ -1382,6 +1396,7 @@
       var btnStop = document.getElementById("btnMeterStop");
       var btnCap = document.getElementById("btnMeterCapture");
       var btnLocate = document.getElementById("btnMeterLocate");
+      var btnRealtime = document.getElementById("btnMeterRealtime");
       try {
         var s = await fetch("/cam-control.php?action=status");
         var st = await s.json();
@@ -1394,8 +1409,9 @@
           if (placeholder) placeholder.style.display = "none";
           if (btnPlay) btnPlay.disabled = true;
           if (btnStop) btnStop.disabled = false;
-          if (btnCap) btnCap.disabled = false;
-          if (btnLocate) btnLocate.disabled = false;
+          if (btnCap && !realtimeRunning) btnCap.disabled = false;
+          if (btnLocate && !realtimeRunning) btnLocate.disabled = false;
+          if (btnRealtime) btnRealtime.disabled = false;
         } else {
           fps.textContent = "-- fps";
           if (placeholder) { placeholder.textContent = "视频流未启动"; placeholder.style.display = "flex"; }
@@ -1403,6 +1419,7 @@
           if (btnStop) btnStop.disabled = true;
           if (btnCap) btnCap.disabled = true;
           if (btnLocate) btnLocate.disabled = true;
+          if (btnRealtime) btnRealtime.disabled = true;
         }
       } catch(e) {
         fps.textContent = "-- fps";
@@ -1449,6 +1466,64 @@
       updateMeterStatus();
     }
 
+    function viewRealtimeCurve(curveId) {
+      fetch("/meter-read.php?action=get_curve&id=" + encodeURIComponent(curveId))
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          if (!d.ok || !d.readings) { showToast("曲线数据不可用"); return; }
+          var overlay = document.createElement("div");
+          overlay.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;";
+          overlay.onclick = function(e){ if (e.target === overlay) overlay.remove(); };
+          var box = document.createElement("div");
+          box.style.cssText = "background:var(--color-bg);border-radius:12px;padding:24px;width:640px;max-width:90vw;box-shadow:0 8px 40px rgba(0,0,0,0.25);";
+          box.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;"><span style="font-weight:700;color:var(--color-primary);">历史曲线</span><button style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--color-text-secondary);" onclick="this.closest(\'div\').parentElement.parentElement.remove()">✕</button></div>';
+          var canvas = document.createElement("canvas");
+          canvas.style.cssText = "width:100%;height:300px;";
+          box.appendChild(canvas);
+          overlay.appendChild(box);
+          document.body.appendChild(overlay);
+          // Defer draw so canvas is in DOM and sized
+          setTimeout(function(){
+            canvas.width = canvas.parentElement.clientWidth - 48;
+            canvas.height = 300;
+            var ctx = canvas.getContext("2d");
+            var W = canvas.width, H = canvas.height;
+            var pad = {t: 20, r: 16, b: 32, l: 48};
+            var pw = W - pad.l - pad.r, ph = H - pad.t - pad.b;
+            var data = d.readings;
+            var vals = data.map(function(p){ return p.r; });
+            var minV = Math.min.apply(null, vals), maxV = Math.max.apply(null, vals);
+            var range = maxV - minV || 1;
+            minV -= range * 0.1; maxV += range * 0.1; range = maxV - minV;
+            ctx.clearRect(0, 0, W, H);
+            ctx.strokeStyle = "#e5e7eb"; ctx.lineWidth = 0.5;
+            ctx.fillStyle = "#9ca3af"; ctx.font = "10px monospace";
+            for (var i = 0; i <= 4; i++) {
+              var y = pad.t + ph * i / 4;
+              ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(W - pad.r, y); ctx.stroke();
+              ctx.fillText((maxV - range * i / 4).toFixed(1), 2, y + 4);
+            }
+            ctx.strokeStyle = "#002FA7"; ctx.lineWidth = 2; ctx.lineJoin = "round";
+            ctx.beginPath();
+            data.forEach(function(p, i){
+              var x = pad.l + pw * i / (data.length - 1);
+              var y = pad.t + ph - ph * (p.r - minV) / range;
+              if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            });
+            ctx.stroke();
+            ctx.lineTo(pad.l + pw, H - pad.b); ctx.lineTo(pad.l, H - pad.b); ctx.closePath();
+            ctx.fillStyle = "rgba(0,47,167,0.08)"; ctx.fill();
+            data.forEach(function(p, i){
+              var x = pad.l + pw * i / (data.length - 1);
+              var y = pad.t + ph - ph * (p.r - minV) / range;
+              ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2);
+              ctx.fillStyle = "#002FA7"; ctx.fill();
+            });
+          }, 50);
+        })
+        .catch(function(){ showToast("加载曲线失败"); });
+    }
+
     function deleteReading(idx) {
       if (!confirm("确定删除这条记录？")) return;
       fetch("/meter-read.php?action=delete&index=" + idx)
@@ -1473,11 +1548,18 @@
             var params = h.min !== undefined ? (h.min + "~" + h.max + "/" + h.divs) : "--";
             var rt = h.time ? h.time.substring(2) : "--";
             var imgName = h.image || "";
+            var isRealtime = h.type === 'realtime';
             var success = h.success !== false;
             var reading = success ? (h.reading != null ? h.reading : "--") : '<span style="color:var(--color-danger);">失败</span>';
-            var viewAction = imgName ? "<a onclick=\"openPhotoViewer('ai','" + photoClickFile(imgName) + "')\" style='color:var(--color-primary);font-weight:600;font-size:0.8rem;cursor:pointer;'>查看</a>&nbsp;" : "";
+            var displayImg = isRealtime ? ('<span style="color:var(--color-text-secondary);font-size:0.75rem;">实时(' + (h.point_count || 0) + '帧)</span>') : imgName;
+            var viewAction = "";
+            if (isRealtime && h.curve_file) {
+              viewAction = "<a onclick=\"viewRealtimeCurve('" + h.curve_file + "')\" style='color:var(--color-primary);font-weight:600;font-size:0.8rem;cursor:pointer;'>查看曲线</a>&nbsp;";
+            } else if (imgName) {
+              viewAction = "<a onclick=\"openPhotoViewer('ai','" + photoClickFile(imgName) + "')\" style='color:var(--color-primary);font-weight:600;font-size:0.8rem;cursor:pointer;'>查看</a>&nbsp;";
+            }
             tbody.insertAdjacentHTML("beforeend",
-              "<tr><td>" + h.time + "</td><td>" + reading + "</td><td>" + imgName + "</td><td>" + rt + "</td><td>" + params + "</td>" +
+              "<tr><td>" + h.time + "</td><td>" + reading + "</td><td>" + displayImg + "</td><td>" + rt + "</td><td>" + params + "</td>" +
               "<td>" + viewAction +
               "<a onclick='deleteReading(" + idx + ")' style='color:var(--color-danger);font-weight:600;font-size:0.8rem;cursor:pointer;'>删除</a></td></tr>");
           });
@@ -1578,6 +1660,154 @@
       }
     }
 
+
+    // ── Realtime curve reading ────────────────────────────
+    var realtimeRunning = false;
+    var realtimeTimer = null;
+    var realtimeData = [];
+    var realtimeSessionStart = null;
+
+    function toggleRealtimeRead() {
+      if (realtimeRunning) { stopRealtimeRead(); } else { startRealtimeRead(); }
+    }
+
+    function startRealtimeRead() {
+      var panel = document.getElementById("realtimeCurvePanel");
+      var btn = document.getElementById("btnMeterRealtime");
+      var canvas = document.getElementById("realtimeCanvas");
+      realtimeRunning = true;
+      realtimeData = [];
+      realtimeSessionStart = new Date();
+      if (panel) panel.classList.add("open");
+      if (btn) { btn.textContent = "停止读取"; btn.classList.add("stop"); }
+      document.getElementById("btnMeterCapture").disabled = true;
+      document.getElementById("btnMeterLocate").disabled = true;
+      resizeRealtimeCanvas(canvas);
+      showToast("开始实时读取...");
+      realtimeTick();
+    }
+
+    function stopRealtimeRead() {
+      realtimeRunning = false;
+      if (realtimeTimer) { clearTimeout(realtimeTimer); realtimeTimer = null; }
+      var panel = document.getElementById("realtimeCurvePanel");
+      var btn = document.getElementById("btnMeterRealtime");
+      if (panel) panel.classList.remove("open");
+      if (btn) { btn.textContent = "实时读取"; btn.classList.remove("stop"); }
+      updateMeterStatus();
+      if (realtimeData.length === 0) return;
+      // 打包曲线数据并写入历史
+      var mn = document.getElementById("meterMin").value || 0;
+      var mx = document.getElementById("meterMax").value || 6;
+      var dv = document.getElementById("meterDivs").value || 29;
+      var last = realtimeData[realtimeData.length - 1];
+      var payload = {
+        time: last.t,
+        reading: last.r,
+        readings: realtimeData,
+        min: mn, max: mx, divisions: dv
+      };
+      fetch("/meter-read.php?action=save_curve", {
+        method: "POST", headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(payload)
+      }).then(function(r){ return r.json(); }).then(function(d){
+        if (d.ok) { loadMeterHistory(); showToast("曲线已保存 (" + realtimeData.length + " 点)"); }
+      }).catch(function(){
+        showToast("曲线保存失败");
+      });
+    }
+
+    function realtimeTick() {
+      if (!realtimeRunning) return;
+      var mn = document.getElementById("meterMin").value || 0;
+      var mx = document.getElementById("meterMax").value || 6;
+      var dv = document.getElementById("meterDivs").value || 29;
+      fetch("/meter-read.php?action=realtime_read&min=" + mn + "&max=" + mx + "&divisions=" + dv)
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          if (!realtimeRunning) return;
+          if (d.ok) {
+            realtimeData.push({r: d.reading, t: d.time});
+            if (realtimeData.length > 60) realtimeData.shift();
+            drawRealtimeCurve();
+            document.getElementById("realtimeCount").textContent = realtimeData.length + " 点";
+            document.getElementById("meterReading").textContent = d.reading;
+            document.getElementById("meterTime").textContent = d.time;
+          }
+        })
+        .catch(function(){})
+        .finally(function(){
+          if (realtimeRunning) realtimeTimer = setTimeout(realtimeTick, 1000);
+        });
+    }
+
+    function resizeRealtimeCanvas(canvas) {
+      if (!canvas) return;
+      var rect = canvas.parentElement.getBoundingClientRect();
+      canvas.width = rect.width - 40;
+      canvas.height = 240;
+    }
+
+    function drawRealtimeCurve() {
+      var canvas = document.getElementById("realtimeCanvas");
+      if (!canvas || realtimeData.length < 2) return;
+      var ctx = canvas.getContext("2d");
+      var W = canvas.width, H = canvas.height;
+      var pad = {t: 20, r: 16, b: 32, l: 44};
+      var pw = W - pad.l - pad.r;
+      var ph = H - pad.t - pad.b;
+      ctx.clearRect(0, 0, W, H);
+
+      // 计算值域
+      var vals = realtimeData.map(function(d){ return d.r; });
+      var minV = Math.min.apply(null, vals), maxV = Math.max.apply(null, vals);
+      var range = maxV - minV || 1;
+      minV -= range * 0.1; maxV += range * 0.1; range = maxV - minV;
+
+      // 网格 + 轴标签
+      ctx.strokeStyle = "#e5e7eb"; ctx.lineWidth = 0.5;
+      ctx.fillStyle = "#9ca3af"; ctx.font = "10px monospace";
+      for (var i = 0; i <= 4; i++) {
+        var y = pad.t + ph * i / 4;
+        ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(W - pad.r, y); ctx.stroke();
+        ctx.fillText((maxV - range * i / 4).toFixed(1), 2, y + 4);
+      }
+      for (var i = 0; i <= 6; i++) {
+        var x = pad.l + pw * i / 6;
+        ctx.beginPath(); ctx.moveTo(x, pad.t); ctx.lineTo(x, H - pad.b); ctx.stroke();
+      }
+
+      // 时间轴
+      var t0 = realtimeData[0].t.split(" ")[1] || realtimeData[0].t;
+      var t1 = realtimeData[realtimeData.length - 1].t.split(" ")[1] || realtimeData[realtimeData.length - 1].t;
+      ctx.fillText(t0, pad.l, H - 4);
+      ctx.fillText(t1, W - pad.r - 40, H - 4);
+
+      // 曲线
+      ctx.strokeStyle = "#002FA7"; ctx.lineWidth = 2; ctx.lineJoin = "round";
+      ctx.beginPath();
+      realtimeData.forEach(function(d, i){
+        var x = pad.l + pw * i / (realtimeData.length - 1);
+        var y = pad.t + ph - ph * (d.r - minV) / range;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+
+      // 填充
+      ctx.lineTo(pad.l + pw * (realtimeData.length - 1) / (realtimeData.length - 1), H - pad.b);
+      ctx.lineTo(pad.l, H - pad.b);
+      ctx.closePath();
+      ctx.fillStyle = "rgba(0,47,167,0.08)";
+      ctx.fill();
+
+      // 圆点
+      realtimeData.forEach(function(d, i){
+        var x = pad.l + pw * i / (realtimeData.length - 1);
+        var y = pad.t + ph - ph * (d.r - minV) / range;
+        ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2);
+        ctx.fillStyle = "#002FA7"; ctx.fill();
+      });
+    }
 
     // ── Tag locate ───────────────────────────────────────
     var tagPreviewCache = null;
@@ -1815,7 +2045,7 @@
       }).catch(function(){});
       if (tabId === 'tab-meter') { startMeterPoll(); loadMeterHistory(); checkModelStatus(); }
       if (meterPollTimer && tabId !== 'tab-meter') { clearInterval(meterPollTimer); meterPollTimer = null; }
-      if (tabId !== 'tab-meter') stopTagLocate();
+      if (tabId !== 'tab-meter') { stopTagLocate(); if (realtimeRunning) stopRealtimeRead(); }
     }
 
     function escapeHtml(s) {

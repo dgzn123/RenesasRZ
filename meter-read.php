@@ -143,6 +143,89 @@ if ($action === 'capture') {
     exit;
 }
 
+// ── Realtime Read (轻量版 capture，不写持久存储，专供实时曲线) ──
+if ($action === 'realtime_read') {
+    $jpeg = @file_get_contents('http://127.0.0.1:8080/snapshot');
+    if (!$jpeg) {
+        echo json_encode(['ok' => false, 'error' => '相机服务未启动']);
+        exit;
+    }
+    // 写到 /tmp（ramfs），不伤 SD 卡；每帧覆盖同一个文件
+    $tmpfile = '/tmp/realtime_frame.jpg';
+    file_put_contents($tmpfile, $jpeg);
+
+    $mn  = floatval($_GET['min']  ?? 0);
+    $mx  = floatval($_GET['max']  ?? 6);
+    $div = intval($_GET['divisions'] ?? 29);
+
+    $svc_url  = "http://127.0.0.1:8086/read?"
+              . "image=" . urlencode($tmpfile)
+              . "&min=$mn&max=$mx&divisions=$div"
+              . "&conf=0.05";
+
+    $result_json = @file_get_contents($svc_url);
+    if (!$result_json) {
+        echo json_encode(['ok' => false, 'error' => '推理服务未启动']);
+        exit;
+    }
+    $result = json_decode($result_json, true);
+    if (!$result || empty($result['success'])) {
+        echo json_encode(['ok' => false, 'error' => $result['error'] ?? '推理失败']);
+        exit;
+    }
+
+    echo json_encode([
+        'ok'         => true,
+        'reading'    => round($result['reading'], 2),
+        'elapsed_ms' => $result['elapsed_ms'] ?? 0,
+        'time'       => date('Y-m-d H:i:s')
+    ]);
+    exit;
+}
+
+// ── Save Curve（实时读取结束时保存曲线数据）─────────────
+if ($action === 'save_curve') {
+    $body = json_decode(file_get_contents('php://input'), true);
+    if (!$body || empty($body['readings'])) {
+        echo json_encode(['ok' => false, 'error' => 'missing readings']);
+        exit;
+    }
+    $id = 'curve_' . date('Ymd_His');
+    $curve_file = '/home/root/ai/output/' . $id . '.json';
+    file_put_contents($curve_file, json_encode($body['readings'], JSON_UNESCAPED_UNICODE));
+
+    $history = get_history();
+    $entry = [
+        'time'       => $body['time'] ?? date('Y-m-d H:i:s'),
+        'reading'    => $body['reading'] ?? 0,
+        'success'    => true,
+        'type'       => 'realtime',
+        'curve_file' => $id,
+        'point_count'=> count($body['readings']),
+        'min'        => floatval($body['min'] ?? 0),
+        'max'        => floatval($body['max'] ?? 6),
+        'divs'       => intval($body['divisions'] ?? 29),
+    ];
+    $history[] = $entry;
+    save_history($history);
+
+    echo json_encode(['ok' => true, 'curve_file' => $id]);
+    exit;
+}
+
+// ── Get Curve（查看曲线历史）─────────────────────────────
+if ($action === 'get_curve') {
+    $id = $_GET['id'] ?? '';
+    $curve_file = '/home/root/ai/output/' . $id . '.json';
+    if (!file_exists($curve_file)) {
+        echo json_encode(['ok' => false, 'error' => 'curve not found']);
+        exit;
+    }
+    $data = json_decode(file_get_contents($curve_file), true);
+    echo json_encode(['ok' => true, 'readings' => $data]);
+    exit;
+}
+
 // ── Poll ───────────────────────────────────────────────────
 if ($action === 'poll') {
     $id  = $_GET['id'] ?? '';
