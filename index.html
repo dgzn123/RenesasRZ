@@ -301,18 +301,20 @@
     @keyframes dot-pulse { from { opacity: 1; } to { opacity: 0.3; } }
     .status-text { color: #6b7280; }
 
-    /* 实时曲线面板 — JS 设绝对坐标 + 圆形展开 */
+    /* 实时曲线面板 — JS 设绝对坐标 + 圆形展开/收起 */
     .meter-curve-panel {
-      position: absolute; visibility: hidden;
+      position: absolute; opacity: 0;
       clip-path: circle(0% at 100% 0);
-      transition: clip-path 0.5s ease;
+      transition: clip-path 0.5s ease, opacity 0.5s ease;
       background: var(--color-bg); border: 1px solid var(--color-border);
-      border-radius: var(--radius); padding: 16px 20px; z-index: 10;
+      border-radius: var(--radius); box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      padding: 16px 20px; z-index: 10;
       display: flex; flex-direction: column; pointer-events: none;
     }
     .meter-curve-panel.open {
       clip-path: circle(141% at 100% 0);
-      pointer-events: auto; visibility: visible;
+      opacity: 1;
+      pointer-events: auto;
     }
     .meter-curve-panel canvas { flex: 1; display: block; width: 100%; min-height: 0; }
     #realtimeCount { font-size: 0.72rem; color: var(--color-text-secondary); font-weight: 500; }
@@ -439,8 +441,9 @@
     .meter-side .panel-title { margin-bottom:10px; }
     .meter-side .reading-display { padding:18px 20px; }
     .meter-side .reading-value { font-size:56px; }
-    .meter-terminal-panel { display:flex; flex-direction:column; flex:0 0 132px; min-height:0; overflow:hidden; }
+    .meter-terminal-panel { display:flex; flex-direction:column; flex:0 0 165px; min-height:0; overflow:hidden; }
     .meter-terminal-panel .terminal-window { flex:1 1 0; height:auto; min-height:0; max-height:none !important; overflow-y:auto; font-size:0.72rem; line-height:1.5; }
+    #tagPreviewBox { flex:1 1 140px !important; min-height:140px !important; max-height:190px; overflow:hidden; }
     .meter-history-panel { grid-column:1 / -1; margin-top:0; }
     #tagPreviewBox { flex:1 1 170px !important; min-height:160px !important; max-height:220px; overflow:hidden; }
     #tagContent { min-height:0; overflow:hidden; }
@@ -1702,7 +1705,8 @@
       if (btn) { btn.textContent = "停止读取"; btn.classList.add("stop"); }
       document.getElementById("btnMeterCapture").disabled = true;
       document.getElementById("btnMeterLocate").disabled = true;
-      resizeRealtimeCanvas(canvas);
+      // 等一帧让 panel 布局生效再设 canvas 尺寸
+      requestAnimationFrame(function() { resizeRealtimeCanvas(canvas); });
       showToast("开始实时读取...");
       realtimeTick();
     }
@@ -1763,9 +1767,14 @@
 
     function resizeRealtimeCanvas(canvas) {
       if (!canvas) return;
-      var rect = canvas.parentElement.getBoundingClientRect();
-      canvas.width = rect.width - 40;
-      canvas.height = 240;
+      var panel = canvas.parentElement;
+      var rect = panel.getBoundingClientRect();
+      var style = getComputedStyle(panel);
+      var padH = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+      var padV = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
+      var titleH = 28;
+      canvas.width = Math.max(rect.width - padH, 200);
+      canvas.height = Math.max(rect.height - padV - titleH, 120);
     }
 
     function drawRealtimeCurve() {
