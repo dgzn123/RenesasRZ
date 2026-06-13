@@ -193,7 +193,6 @@ function draw() {
   }
   // 弧带边界
   drawSegArc(R_outer, 2.5 * s, "#1a1c20");
-  drawSegArc(R_inner, 2.5 * s, "#1a1c20");
 
   // ── 刻度线（区间边界粗长 + 标签，普通刻度细短无标签）─
   var R_major = R_major_tick;
@@ -335,7 +334,6 @@ function exportPNG() {
     ctx.lineWidth = w; ctx.strokeStyle = color; ctx.stroke();
   }
   drawSegArcExp(R_outer, 3, "#1a1c20");
-  drawSegArcExp(R_inner, 3, "#1a1c20");
 
   // 刻度（区间边界粗长 + 标签）
   var eR_major = R_major;
