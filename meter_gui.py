@@ -15,7 +15,7 @@ from tkinter import ttk, filedialog, messagebox
 from PIL import Image, ImageDraw, ImageFont
 
 # ─── 常量 ───────────────────────────────────────────────────
-ARC_START = 225   # 优弧起始角（数学角度，0°=右，逆时针）
+ARC_START = 315   # 右下起始，劣弧缺口正对底部
 ARC_SWEEP = 270   # 跨度
 CANVAS_W = 620
 CANVAS_H = 620
@@ -135,7 +135,7 @@ class MeterGUI:
                          outline="#a0a2a8", width=w)
 
         # ── 刻度线 ────────────────────────────────────────────
-        sub_per = 5
+        sub_per = 1  # 仅长刻度
         total = divs * sub_per
         for i in range(total + 1):
             frac = i / total
@@ -154,7 +154,7 @@ class MeterGUI:
             x, y = polar_xy(cx, cy, R_label, ang)
             text = f"{val:.6g}"
             c.create_text(x, y, text=text, fill="#303238",
-                          font=("Consolas", 9), angle=ang - 90 if (ang < 360) else ang - 450)
+                          font=("Consolas", 9), angle=ang - 90)
 
         # ── 指针 ──────────────────────────────────────────────
         needle_ang = value_to_angle(value, min_v, max_v)
@@ -224,7 +224,7 @@ class MeterGUI:
                      pil_end, pil_start, fill=(160, 162, 170), width=2)
 
         # 刻度
-        sub_per = 5
+        sub_per = 1  # 仅长刻度
         total = divs * sub_per
         for i in range(total + 1):
             frac = i / total

@@ -19,9 +19,9 @@ from PIL import Image, ImageDraw, ImageFont
 
 
 # 优弧跨度：270°，底部缺口 90°，起始于左下（约 135° 数学角）
-ARC_START_DEG = 225   # 左下起始（数学角度，0°=右，逆时针）
+ARC_START_DEG = 315   # 右下起始（劣弧缺口正对底部）
 ARC_SWEEP_DEG = 270   # 跨度 270°
-ARC_END_DEG = ARC_START_DEG + ARC_SWEEP_DEG  # 495° = 135°
+ARC_END_DEG = ARC_START_DEG + ARC_SWEEP_DEG  # 585° = 225°（左下）
 
 
 def _font(size):
@@ -106,7 +106,7 @@ def generate_meter(
     font_label = _font(int(size * 0.026))
     font_value = _font(int(size * 0.09))
 
-    sub_per_div = 5
+    sub_per_div = 1  # 仅长刻度 + 标签
     total_sub = divisions * sub_per_div
     for i in range(total_sub + 1):
         fraction = i / total_sub
