@@ -229,10 +229,14 @@ function draw() {
   // ── 指针（钝头宽针，提升 tip 检测率）───────────────
   var nAng = valueToAngle(val, minV, maxV);
   var bw = 12 * s;  // 基部宽度
-  var tipA = 8;      // 钝头半角（度），越小尖端越宽
+  var tipW = 6 * s;  // 尖端宽度（像素），不为0则钝头
   var tipR = R_needle;
-  var tipL = polarXY(cx, cy, tipR, nAng + tipA);
-  var tipR2 = polarXY(cx, cy, tipR, nAng - tipA);
+  var rad = nAng * Math.PI / 180;
+  var perpX = Math.cos(rad + Math.PI / 2) * tipW / 2;
+  var perpY = Math.sin(rad + Math.PI / 2) * tipW / 2;
+  var tipC = polarXY(cx, cy, tipR, nAng);
+  var tipL = { x: tipC.x + perpX, y: tipC.y + perpY };
+  var tipR2= { x: tipC.x - perpX, y: tipC.y - perpY };
   var tailR = R_needle * 0.15;
   var tailC = polarXY(cx, cy, tailR, nAng + 180);
   var baseL = polarXY(cx, cy, bw, nAng + 100);
@@ -374,9 +378,14 @@ function exportPNG() {
   // 指针（钝头宽针）
   var nAng = valueToAngle(val, minV, maxV);
   var eBw = expSize * 0.016;
-  var tipA = 8;
-  var tipL = polarXY(cx, cy, R_needle, nAng + tipA);
-  var tipR2 = polarXY(cx, cy, R_needle, nAng - tipA);
+  var tipW = expSize * 0.008;
+  var tipR = R_needle;
+  var rad = nAng * Math.PI / 180;
+  var perpX = Math.cos(rad + Math.PI / 2) * tipW / 2;
+  var perpY = Math.sin(rad + Math.PI / 2) * tipW / 2;
+  var tipC = polarXY(cx, cy, tipR, nAng);
+  var tipL = { x: tipC.x + perpX, y: tipC.y + perpY };
+  var tipR2= { x: tipC.x - perpX, y: tipC.y - perpY };
   var tailC = polarXY(cx, cy, R_needle * 0.15, nAng + 180);
   var baseL = polarXY(cx, cy, eBw, nAng + 100);
   var baseR = polarXY(cx, cy, eBw, nAng - 100);
