@@ -226,17 +226,23 @@ function draw() {
     ctx.fillText(formatNum(Math.round(lblVal)), p.x, p.y);
   }
 
-  // ── 指针 ──────────────────────────────────────────────
+  // ── 指针（钝头宽针，提升 tip 检测率）───────────────
   var nAng = valueToAngle(val, minV, maxV);
-  var tip = polarXY(cx, cy, R_needle, nAng);
-  // 尾尖（短针尾，对面的反方向）
-  var tail = polarXY(cx, cy, R_needle * 0.18, nAng + 180);
-  var bw = 8 * s;
-  var bl = polarXY(cx, cy, bw, nAng + 105);
-  var br = polarXY(cx, cy, bw, nAng - 105);
+  var bw = 12 * s;  // 基部宽度
+  var tipA = 20;     // 钝头半角（度）
+  var tipR = R_needle;
+  var tipL = polarXY(cx, cy, tipR, nAng + tipA);
+  var tipR2 = polarXY(cx, cy, tipR, nAng - tipA);
+  var tailR = R_needle * 0.15;
+  var tailC = polarXY(cx, cy, tailR, nAng + 180);
+  var baseL = polarXY(cx, cy, bw, nAng + 100);
+  var baseR = polarXY(cx, cy, bw, nAng - 100);
   ctx.beginPath();
-  ctx.moveTo(tail.x, tail.y); ctx.lineTo(bl.x, bl.y);
-  ctx.lineTo(tip.x, tip.y); ctx.lineTo(br.x, br.y);
+  ctx.moveTo(tailC.x, tailC.y);
+  ctx.lineTo(baseL.x, baseL.y);
+  ctx.lineTo(tipL.x, tipL.y);
+  ctx.arc(cx, cy, tipR, (nAng + tipA) * Math.PI / 180, (nAng - tipA) * Math.PI / 180, true);
+  ctx.lineTo(baseR.x, baseR.y);
   ctx.closePath();
   ctx.fillStyle = "#1a1c20";
   ctx.fill();
@@ -300,7 +306,6 @@ function exportPNG() {
   var R_label = expSize * 0.275;
   var R_needle = expSize * 0.30;
   var center_r = expSize * 0.020;
-  var bw = expSize * 0.01;
 
   // 白底 + 金属外圈
   ctx.fillStyle = "#ffffff";
@@ -366,15 +371,20 @@ function exportPNG() {
   ctx.fillText(formatNum(maxV), polarXY(cx, cy, endR, ARC_START + ARC_SWEEP).x,
                               polarXY(cx, cy, endR, ARC_START + ARC_SWEEP).y);
 
-  // 指针（黑身+红尖）
+  // 指针（钝头宽针）
   var nAng = valueToAngle(val, minV, maxV);
-  var tip = polarXY(cx, cy, R_needle, nAng);
-  var tail = polarXY(cx, cy, R_needle * 0.18, nAng + 180);
-  var bl = polarXY(cx, cy, bw * expSize / 300, nAng + 105);
-  var br = polarXY(cx, cy, bw * expSize / 300, nAng - 105);
+  var eBw = expSize * 0.016;
+  var tipA = 20;
+  var tipL = polarXY(cx, cy, R_needle, nAng + tipA);
+  var tailC = polarXY(cx, cy, R_needle * 0.15, nAng + 180);
+  var baseL = polarXY(cx, cy, eBw, nAng + 100);
+  var baseR = polarXY(cx, cy, eBw, nAng - 100);
   ctx.beginPath();
-  ctx.moveTo(tail.x, tail.y); ctx.lineTo(bl.x, bl.y);
-  ctx.lineTo(tip.x, tip.y); ctx.lineTo(br.x, br.y);
+  ctx.moveTo(tailC.x, tailC.y);
+  ctx.lineTo(baseL.x, baseL.y);
+  ctx.lineTo(tipL.x, tipL.y);
+  ctx.arc(cx, cy, R_needle, (nAng + tipA) * Math.PI / 180, (nAng - tipA) * Math.PI / 180, true);
+  ctx.lineTo(baseR.x, baseR.y);
   ctx.closePath();
   ctx.fillStyle = "#1a1c20";
   ctx.fill();
