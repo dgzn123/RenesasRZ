@@ -138,7 +138,7 @@ function valueToAngle(val, minV, maxV) {
 
 function polarXY(cx, cy, r, deg) {
   var rad = deg * Math.PI / 180;
-  return { x: cx + r * Math.cos(rad), y: cy - r * Math.sin(rad) };
+  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
 }
 
 function draw() {
@@ -224,7 +224,7 @@ function draw() {
     var p = polarXY(cx, cy, R_label, ang);
     ctx.save();
     ctx.translate(p.x, p.y);
-    var rot = (ang - 90) * Math.PI / 180;
+    var rot = -(ang - 90) * Math.PI / 180;
     ctx.rotate(rot);
     ctx.fillText(formatNum(lblVal), 0, 0);
     ctx.restore();
