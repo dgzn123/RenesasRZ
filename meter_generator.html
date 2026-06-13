@@ -183,7 +183,6 @@ function draw() {
   ctx.fill();
 
   // ── 弧带 ────────────────────────────────────────────────
-  var bandW = R_outer - R_inner;
   function drawSegArc(r, w, color) {
     var segs = [[135, 225], [225, 315], [315, 45]];
     ctx.beginPath();
@@ -192,12 +191,9 @@ function draw() {
     });
     ctx.lineWidth = w; ctx.strokeStyle = color; ctx.stroke();
   }
-  // 弧带底色（浅灰）
-  drawSegArc((R_outer + R_inner) / 2, bandW, "#d8d9de");
-  // 外边界
-  drawSegArc(R_outer, 2 * s, "#1a1c20");
-  // 内边界
-  drawSegArc(R_inner, 2 * s, "#1a1c20");
+  // 弧带边界
+  drawSegArc(R_outer, 2.5 * s, "#1a1c20");
+  drawSegArc(R_inner, 2.5 * s, "#1a1c20");
 
   // ── 刻度线（区间边界粗长 + 标签，普通刻度细短无标签）─
   var R_major = R_major_tick;
@@ -216,17 +212,17 @@ function draw() {
     ctx.stroke();
   }
 
-  // ── 数字标签（仅区间边界，竖直不旋转）─────────────────
+  // ── 区间数字标签（与端点同字号）───────────────────────
   ctx.fillStyle = "#1a1c20";
-  ctx.font = "bold " + Math.round(18 * s) + "px 'Consolas','Microsoft YaHei',monospace";
+  ctx.font = "bold " + Math.round(52 * s) + "px 'Consolas','Microsoft YaHei',monospace";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   for (var i = 0; i <= divs; i++) {
     if (i % minor !== 0) continue;
-    if (i === 0 || i === divs) continue;  // 端点已有大字
+    if (i === 0 || i === divs) continue;
     var lblVal = minV + (maxV - minV) * i / divs;
     var ang = valueToAngle(lblVal, minV, maxV);
-    var p = polarXY(cx, cy, R_label, ang);
+    var p = polarXY(cx, cy, R_label - 8 * s, ang);
     ctx.fillText(formatNum(Math.round(lblVal)), p.x, p.y);
   }
 
@@ -334,7 +330,6 @@ function exportPNG() {
   ctx.fill();
 
   // 弧带
-  var bandW = R_outer - R_inner;
   function drawSegArcExp(r, w, color) {
     var segs = [[135, 225], [225, 315], [315, 45]];
     ctx.beginPath();
@@ -343,9 +338,8 @@ function exportPNG() {
     });
     ctx.lineWidth = w; ctx.strokeStyle = color; ctx.stroke();
   }
-  drawSegArcExp((R_outer + R_inner) / 2, bandW, "#d8d9de");
   drawSegArcExp(R_outer, 3, "#1a1c20");
-  drawSegArcExp(R_inner, 2.5, "#1a1c20");
+  drawSegArcExp(R_inner, 3, "#1a1c20");
 
   // 刻度（区间边界粗长 + 标签）
   var eR_major = R_major;
@@ -364,9 +358,9 @@ function exportPNG() {
     ctx.stroke();
   }
 
-  // 标签（仅区间边界）
+  // 区间标签（与端点同字号）
   ctx.fillStyle = "#1a1c20";
-  ctx.font = "bold " + Math.round(expSize * 0.022) + "px 'Consolas','Microsoft YaHei',monospace";
+  ctx.font = "bold " + Math.round(expSize * 0.052) + "px 'Consolas','Microsoft YaHei',monospace";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   for (var i = 0; i <= divs; i++) {
@@ -374,7 +368,7 @@ function exportPNG() {
     if (i === 0 || i === divs) continue;
     var lblVal = minV + (maxV - minV) * i / divs;
     var ang = valueToAngle(lblVal, minV, maxV);
-    var p = polarXY(cx, cy, R_label, ang);
+    var p = polarXY(cx, cy, R_label - expSize * 0.01, ang);
     ctx.fillText(formatNum(Math.round(lblVal)), p.x, p.y);
   }
 
