@@ -240,16 +240,6 @@ function draw() {
   ctx.closePath();
   ctx.fillStyle = "#1a1c20";
   ctx.fill();
-  // 针尖红色段
-  var segStart = polarXY(cx, cy, R_needle * 0.55, nAng);
-  var sl = polarXY(cx, cy, bw * 0.5, nAng + 105);
-  var sr = polarXY(cx, cy, bw * 0.5, nAng - 105);
-  ctx.beginPath();
-  ctx.moveTo(segStart.x, segStart.y);
-  ctx.lineTo(sl.x, sl.y); ctx.lineTo(tip.x, tip.y); ctx.lineTo(sr.x, sr.y);
-  ctx.closePath();
-  ctx.fillStyle = "#c8281e";
-  ctx.fill();
 
   // ── 中心圆 ────────────────────────────────────────────
   ctx.beginPath();
@@ -387,15 +377,6 @@ function exportPNG() {
   ctx.lineTo(tip.x, tip.y); ctx.lineTo(br.x, br.y);
   ctx.closePath();
   ctx.fillStyle = "#1a1c20";
-  ctx.fill();
-  var segStart = polarXY(cx, cy, R_needle * 0.55, nAng);
-  var sl = polarXY(cx, cy, bw * 0.5 * expSize / 300, nAng + 105);
-  var sr = polarXY(cx, cy, bw * 0.5 * expSize / 300, nAng - 105);
-  ctx.beginPath();
-  ctx.moveTo(segStart.x, segStart.y);
-  ctx.lineTo(sl.x, sl.y); ctx.lineTo(tip.x, tip.y); ctx.lineTo(sr.x, sr.y);
-  ctx.closePath();
-  ctx.fillStyle = "#c8281e";
   ctx.fill();
 
   // 中心圆
