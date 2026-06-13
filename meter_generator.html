@@ -179,55 +179,32 @@ function draw() {
   drawSegArc(R_outer, 2.5, "#c8cad0");
   drawSegArc(R_inner, 2, "#c8cad0");
 
-  // 弧带内细分纹理（微细线）
-  var subPerDiv = 2;  // 每分度 2 细格：长(边界)+短(中点)
-  var totalSub = divs * subPerDiv;
-  for (var i = 0; i <= totalSub; i++) {
-    var frac = i / totalSub;
+  // ── 刻度线（每分度一条，整数粗/非整数细）───────────
+  for (var i = 0; i <= divs; i++) {
+    var frac = i / divs;
     var ang = ARC_START + frac * ARC_SWEEP;
-    var isMajor = (i % subPerDiv === 0);
-    var isMid = (i % subPerDiv === 2);   // 中刻度（半格）
-    var rEnd;
-    if (i === 0 || i === totalSub) {
-      rEnd = R_major_tick;   // 端点：长刻度
-    } else if (isMajor) {
-      rEnd = R_major_tick;
-    } else if (isMid) {
-      rEnd = R_minor_tick;
-    } else {
-      rEnd = R_inner + 5;
-    }
+    var valAtTick = minV + (maxV - minV) * frac;
+    var isInt = Math.abs(valAtTick - Math.round(valAtTick)) < 1e-9;
     var p1 = polarXY(cx, cy, R_outer + 2, ang);
-    var p2 = polarXY(cx, cy, rEnd, ang);
+    var p2 = polarXY(cx, cy, R_major_tick, ang);
     ctx.beginPath();
     ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y);
-    if (isMajor || isMid || i === 0 || i === totalSub) {
-      ctx.lineWidth = isMajor ? 2.8 : 1.8;
-      ctx.strokeStyle = "#353840";
-    } else {
-      ctx.lineWidth = 0.8;
-      ctx.strokeStyle = "#b8bac0";
-    }
+    ctx.lineWidth = isInt ? 2.8 : 0.8;
+    ctx.strokeStyle = isInt ? "#353840" : "#a0a2a8";
     ctx.stroke();
   }
 
-  // ── 数字标签 ──────────────────────────────────────────
-  var labelStep = divs > 25 ? Math.ceil(divs / 10) : 1;
+  // ── 数字标签（竖直不旋转，仅整数位）─────────────────
   ctx.fillStyle = "#2a2c30";
-  ctx.font = "bold 13px 'Consolas','Microsoft YaHei',monospace";
+  ctx.font = "bold 16px 'Consolas','Microsoft YaHei',monospace";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   for (var i = 0; i <= divs; i++) {
-    if (i % labelStep !== 0 && i !== 0 && i !== divs) continue;
     var lblVal = minV + (maxV - minV) * i / divs;
+    if (Math.abs(lblVal - Math.round(lblVal)) > 1e-9) continue;
     var ang = valueToAngle(lblVal, minV, maxV);
     var p = polarXY(cx, cy, R_label, ang);
-    ctx.save();
-    ctx.translate(p.x, p.y);
-    var rot = -(ang - 90) * Math.PI / 180;
-    ctx.rotate(rot);
-    ctx.fillText(formatNum(lblVal), 0, 0);
-    ctx.restore();
+    ctx.fillText(formatNum(Math.round(lblVal)), p.x, p.y);
   }
 
   // ── 指针 ──────────────────────────────────────────────
@@ -326,45 +303,34 @@ function exportPNG() {
   drawSegArcExp(R_outer, 3, "#b8bac0");
   drawSegArcExp(R_inner, 2.5, "#b8bac0");
 
-  // 刻度
-  var subPerDiv = 2;  // 每分度 2 细格：长(边界)+短(中点)
-  var totalSub = divs * subPerDiv;
-  for (var i = 0; i <= totalSub; i++) {
-    var frac = i / totalSub;
+  // 刻度（整数粗、非整数细）
+  for (var i = 0; i <= divs; i++) {
+    var frac = i / divs;
     var ang = ARC_START + frac * ARC_SWEEP;
-    var isMajor = (i % subPerDiv === 0);
-    var isMid = (i % subPerDiv === 2);
-    var rEnd;
-    if (i === 0 || i === totalSub) rEnd = R_major;
-    else if (isMajor) rEnd = R_major;
-    else if (isMid) rEnd = R_minor;
-    else rEnd = R_inner + expSize * 0.008;
+    var valAtTick = minV + (maxV - minV) * frac;
+    var isInt = Math.abs(valAtTick - Math.round(valAtTick)) < 1e-9;
     var p1 = polarXY(cx, cy, R_outer + 2, ang);
-    var p2 = polarXY(cx, cy, rEnd, ang);
+    var p2 = polarXY(cx, cy, R_major, ang);
     ctx.beginPath();
     ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y);
-    ctx.lineWidth = (isMajor || isMid) ? (isMajor ? 3 : 2) : 1;
-    ctx.strokeStyle = (isMajor || isMid) ? "#303238" : "#b0b2b8";
+    ctx.lineWidth = isInt ? 3 : 1;
+    ctx.strokeStyle = isInt ? "#303238" : "#b0b2b8";
     ctx.stroke();
   }
 
-  // 标签
-  var labelStep = divs > 25 ? Math.ceil(divs / 10) : 1;
+  // 标签（竖直不旋转，仅整数位）
   ctx.fillStyle = "#2a2c30";
-  ctx.font = "bold " + Math.round(expSize * 0.018) + "px 'Consolas','Microsoft YaHei',monospace";
+  ctx.font = "bold " + Math.round(expSize * 0.022) + "px 'Consolas','Microsoft YaHei',monospace";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   for (var i = 0; i <= divs; i++) {
-    if (i % labelStep !== 0 && i !== 0 && i !== divs) continue;
     var lblVal = minV + (maxV - minV) * i / divs;
+    if (Math.abs(lblVal - Math.round(lblVal)) > 1e-9) continue;
     var ang = valueToAngle(lblVal, minV, maxV);
     var p = polarXY(cx, cy, R_label, ang);
-    ctx.save();
-    ctx.translate(p.x, p.y);
-    ctx.rotate((ang - 90) * Math.PI / 180);
-    ctx.fillText(formatNum(lblVal), 0, 0);
-    ctx.restore();
+    ctx.fillText(formatNum(Math.round(lblVal)), p.x, p.y);
   }
+
 
   // 指针
   var nAng = valueToAngle(val, minV, maxV);
