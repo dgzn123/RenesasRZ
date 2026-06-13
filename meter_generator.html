@@ -89,6 +89,10 @@
     <input type="number" id="inDivs" value="50" step="1" min="1" oninput="draw()">
   </div>
   <div class="field">
+    <label>区间跨度</label>
+    <input type="number" id="inMinor" value="10" step="1" min="1" oninput="draw()">
+  </div>
+  <div class="field">
     <label>当前值</label>
     <input type="number" id="inValue" value="5.95" step="any" oninput="draw()">
   </div>
@@ -149,6 +153,8 @@ function draw() {
   var minV = parseFloat(document.getElementById("inMin").value) || 0;
   var maxV = parseFloat(document.getElementById("inMax").value) || 25;
   var divs = parseInt(document.getElementById("inDivs").value) || 50;
+  var minor = parseInt(document.getElementById("inMinor").value) || 10;
+  if (minor < 1) minor = 1;
   var val  = parseFloat(document.getElementById("inValue").value) || 0;
   var title = document.getElementById("inTitle").value.trim();
   if (minV >= maxV || divs < 1) return;
@@ -193,30 +199,32 @@ function draw() {
   // 内边界
   drawSegArc(R_inner, 2 * s, "#1a1c20");
 
-  // ── 刻度线 ──────────────────────────────────────────────
+  // ── 刻度线（区间边界粗长 + 标签，普通刻度细短无标签）─
+  var R_major = R_major_tick;
+  var R_normal = (R_major_tick + R_outer) / 2;  // 普通刻度较短
   for (var i = 0; i <= divs; i++) {
     var frac = i / divs;
     var ang = ARC_START + frac * ARC_SWEEP;
-    var valAtTick = minV + (maxV - minV) * frac;
-    var isInt = Math.abs(valAtTick - Math.round(valAtTick)) < 1e-9;
+    var isBoundary = (i % minor === 0);
+    var rEnd = isBoundary ? R_major : R_normal;
     var p1 = polarXY(cx, cy, R_outer, ang);
-    var p2 = polarXY(cx, cy, R_major_tick, ang);
+    var p2 = polarXY(cx, cy, rEnd, ang);
     ctx.beginPath();
     ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y);
-    ctx.lineWidth = (isInt ? 2.5 : 0.6) * s;
+    ctx.lineWidth = (isBoundary ? 3 : 0.6) * s;
     ctx.strokeStyle = "#1a1c20";
     ctx.stroke();
   }
 
-  // ── 数字标签 ────────────────────────────────────────────
+  // ── 数字标签（仅区间边界，竖直不旋转）─────────────────
   ctx.fillStyle = "#1a1c20";
   ctx.font = "bold " + Math.round(18 * s) + "px 'Consolas','Microsoft YaHei',monospace";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   for (var i = 0; i <= divs; i++) {
-    var lblVal = minV + (maxV - minV) * i / divs;
-    if (Math.abs(lblVal - Math.round(lblVal)) > 1e-9) continue;
+    if (i % minor !== 0) continue;
     if (i === 0 || i === divs) continue;  // 端点已有大字
+    var lblVal = minV + (maxV - minV) * i / divs;
     var ang = valueToAngle(lblVal, minV, maxV);
     var p = polarXY(cx, cy, R_label, ang);
     ctx.fillText(formatNum(Math.round(lblVal)), p.x, p.y);
@@ -298,6 +306,8 @@ function exportPNG() {
   var minV = parseFloat(document.getElementById("inMin").value) || 0;
   var maxV = parseFloat(document.getElementById("inMax").value) || 25;
   var divs = parseInt(document.getElementById("inDivs").value) || 50;
+  var minor = parseInt(document.getElementById("inMinor").value) || 10;
+  if (minor < 1) minor = 1;
   var val  = parseFloat(document.getElementById("inValue").value) || 0;
   var title = document.getElementById("inTitle").value.trim();
 
@@ -337,30 +347,32 @@ function exportPNG() {
   drawSegArcExp(R_outer, 3, "#1a1c20");
   drawSegArcExp(R_inner, 2.5, "#1a1c20");
 
-  // 刻度
+  // 刻度（区间边界粗长 + 标签）
+  var eR_major = R_major;
+  var eR_normal = (R_major + R_outer) / 2;
   for (var i = 0; i <= divs; i++) {
     var frac = i / divs;
     var ang = ARC_START + frac * ARC_SWEEP;
-    var valAtTick = minV + (maxV - minV) * frac;
-    var isInt = Math.abs(valAtTick - Math.round(valAtTick)) < 1e-9;
+    var isBoundary = (i % minor === 0);
+    var rEnd = isBoundary ? eR_major : eR_normal;
     var p1 = polarXY(cx, cy, R_outer, ang);
-    var p2 = polarXY(cx, cy, R_major, ang);
+    var p2 = polarXY(cx, cy, rEnd, ang);
     ctx.beginPath();
     ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y);
-    ctx.lineWidth = isInt ? 3 : 1;
+    ctx.lineWidth = isBoundary ? 3 : 1;
     ctx.strokeStyle = "#1a1c20";
     ctx.stroke();
   }
 
-  // 标签
+  // 标签（仅区间边界）
   ctx.fillStyle = "#1a1c20";
   ctx.font = "bold " + Math.round(expSize * 0.022) + "px 'Consolas','Microsoft YaHei',monospace";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   for (var i = 0; i <= divs; i++) {
-    var lblVal = minV + (maxV - minV) * i / divs;
-    if (Math.abs(lblVal - Math.round(lblVal)) > 1e-9) continue;
+    if (i % minor !== 0) continue;
     if (i === 0 || i === divs) continue;
+    var lblVal = minV + (maxV - minV) * i / divs;
     var ang = valueToAngle(lblVal, minV, maxV);
     var p = polarXY(cx, cy, R_label, ang);
     ctx.fillText(formatNum(Math.round(lblVal)), p.x, p.y);
