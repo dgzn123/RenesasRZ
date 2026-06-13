@@ -15,8 +15,8 @@ from tkinter import ttk, filedialog, messagebox
 from PIL import Image, ImageDraw, ImageFont
 
 # ─── 常量 ───────────────────────────────────────────────────
-ARC_START = 315   # 右下起始，劣弧缺口正对底部
-ARC_SWEEP = 270   # 跨度
+ARC_START = 225   # 左下 7:30（tkinter CCW: 0°=右 90°=上）
+ARC_SWEEP = -270  # 负值=顺时针跨顶部至右下，缺口在底部
 CANVAS_W = 620
 CANVAS_H = 620
 
@@ -135,7 +135,7 @@ class MeterGUI:
                          outline="#a0a2a8", width=w)
 
         # ── 刻度线 ────────────────────────────────────────────
-        sub_per = 1  # 仅长刻度
+        sub_per = 2  # 每分度 2 细格
         total = divs * sub_per
         for i in range(total + 1):
             frac = i / total
@@ -224,7 +224,7 @@ class MeterGUI:
                      pil_end, pil_start, fill=(160, 162, 170), width=2)
 
         # 刻度
-        sub_per = 1  # 仅长刻度
+        sub_per = 2  # 每分度 2 细格
         total = divs * sub_per
         for i in range(total + 1):
             frac = i / total

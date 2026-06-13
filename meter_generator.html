@@ -104,8 +104,8 @@
 
 <script>
 // ─── 常量 ─────────────────────────────────────────────────
-var ARC_START = 315;   // 右下起始，数学角度 0°=右 CCW
-var ARC_SWEEP = 270;   // 跨度，缺口在底部
+var ARC_START = 135;   // 左下 7:30（Canvas CW: 0=右 90=下）
+var ARC_SWEEP = 270;   // 顺时针跨过顶部到右下 4:30，缺口在底部 6:00
 var SIZE = 620;
 
 var canvas = document.getElementById("meterCanvas");
@@ -168,7 +168,7 @@ function draw() {
   ctx.lineWidth = 2; ctx.strokeStyle = "#c8cad0"; ctx.stroke();
 
   // 弧带内细分纹理（微细线）
-  var subPerDiv = 4;
+  var subPerDiv = 2;  // 每分度 2 细格：长(边界)+短(中点)
   var totalSub = divs * subPerDiv;
   for (var i = 0; i <= totalSub; i++) {
     var frac = i / totalSub;
@@ -314,7 +314,7 @@ function exportPNG() {
   ctx.lineWidth = 2.5; ctx.strokeStyle = "#b8bac0"; ctx.stroke();
 
   // 刻度
-  var subPerDiv = 4;
+  var subPerDiv = 2;  // 每分度 2 细格：长(边界)+短(中点)
   var totalSub = divs * subPerDiv;
   for (var i = 0; i <= totalSub; i++) {
     var frac = i / totalSub;

@@ -19,8 +19,8 @@ from PIL import Image, ImageDraw, ImageFont
 
 
 # 优弧跨度：270°，底部缺口 90°，起始于左下（约 135° 数学角）
-ARC_START_DEG = 315   # 右下起始（劣弧缺口正对底部）
-ARC_SWEEP_DEG = 270   # 跨度 270°
+ARC_START_DEG = 135   # 左下 7:30（PIL CW: 0°=右 90°=下）
+ARC_SWEEP_DEG = 270   # 顺时针跨顶部至右下 4:30，缺口在底部
 ARC_END_DEG = ARC_START_DEG + ARC_SWEEP_DEG  # 585° = 225°（左下）
 
 
@@ -82,31 +82,28 @@ def generate_meter(
     # ── 优弧刻度带（扇形）───────────────────────────────────────
     band_w = R_outer - R_inner
     mid_R = (R_outer + R_inner) / 2
-    # 将数学角度 (0°=右, CCW) 转换为 PIL arc 的角度 (0°=3点, CW)
-    pil_start = 360 - (ARC_START_DEG % 360)
-    if pil_start == 360:
-        pil_start = 0
-    pil_end = pil_start - ARC_SWEEP_DEG
+    # PIL/Canvas 角度: 0°=3点, CW。直接传 ARC_START 和 ARC_END
+    arc_end = ARC_START_DEG + ARC_SWEEP_DEG
     draw.arc(
         (cx - R_outer, cy - R_outer, cx + R_outer, cy + R_outer),
-        pil_end, pil_start, fill=(180, 182, 190), width=int(band_w),
+        ARC_START_DEG, arc_end, fill=(180, 182, 190), width=int(band_w),
     )
     # 内边界
     draw.arc(
         (cx - R_inner, cy - R_inner, cx + R_inner, cy + R_inner),
-        pil_end + 1, pil_start - 1, fill=(220, 222, 228), width=2,
+        ARC_START_DEG, arc_end, fill=(220, 222, 228), width=2,
     )
     # 外边界
     draw.arc(
         (cx - R_outer, cy - R_outer, cx + R_outer, cy + R_outer),
-        pil_end, pil_start, fill=(180, 182, 190), width=2,
+        ARC_START_DEG, arc_end, fill=(180, 182, 190), width=2,
     )
 
     # ── 刻度线和标签 ────────────────────────────────────────────
     font_label = _font(int(size * 0.026))
     font_value = _font(int(size * 0.09))
 
-    sub_per_div = 1  # 仅长刻度 + 标签
+    sub_per_div = 2  # 每分度 2 细格
     total_sub = divisions * sub_per_div
     for i in range(total_sub + 1):
         fraction = i / total_sub
