@@ -165,38 +165,51 @@ function draw() {
   var R_needle = 235 * s;
   var center_r = 16 * s;
 
-  // ── 弧带（粗弧线 + 阴影感）─────────────────────────────
+  // ── 外圈金属边框 ────────────────────────────────────────
+  var Rim = R_outer + 14 * s;
+  ctx.beginPath();
+  ctx.arc(cx, cy, Rim, 0, Math.PI * 2);
+  ctx.fillStyle = "#3a3c42";
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(cx, cy, Rim - 3 * s, 0, Math.PI * 2);
+  ctx.fillStyle = "#ffffff";
+  ctx.fill();
+
+  // ── 弧带 ────────────────────────────────────────────────
   var bandW = R_outer - R_inner;
-  // 分段弧线（每段 ≤180°，避免 Canvas 自动走短路径）
   function drawSegArc(r, w, color) {
-    var segs = [[135, 225], [225, 315], [315, 45]];  // 三段各 90°，无法走捷径
+    var segs = [[135, 225], [225, 315], [315, 45]];
     ctx.beginPath();
-    segs.forEach(function(s) {
-      ctx.arc(cx, cy, r, s[0] * Math.PI / 180, s[1] * Math.PI / 180);
+    segs.forEach(function(seg) {
+      ctx.arc(cx, cy, r, seg[0] * Math.PI / 180, seg[1] * Math.PI / 180);
     });
     ctx.lineWidth = w; ctx.strokeStyle = color; ctx.stroke();
   }
-  drawSegArc((R_outer + R_inner) / 2, bandW, "#e8e9ec");
-  drawSegArc(R_outer, 2.5 * s, "#c8cad0");
-  drawSegArc(R_inner, 2 * s, "#c8cad0");
+  // 弧带底色（浅灰）
+  drawSegArc((R_outer + R_inner) / 2, bandW, "#d8d9de");
+  // 外边界
+  drawSegArc(R_outer, 2 * s, "#1a1c20");
+  // 内边界
+  drawSegArc(R_inner, 2 * s, "#1a1c20");
 
-  // ── 刻度线（每分度一条，整数粗/非整数细）───────────
+  // ── 刻度线 ──────────────────────────────────────────────
   for (var i = 0; i <= divs; i++) {
     var frac = i / divs;
     var ang = ARC_START + frac * ARC_SWEEP;
     var valAtTick = minV + (maxV - minV) * frac;
     var isInt = Math.abs(valAtTick - Math.round(valAtTick)) < 1e-9;
-    var p1 = polarXY(cx, cy, R_outer + 2, ang);
+    var p1 = polarXY(cx, cy, R_outer, ang);
     var p2 = polarXY(cx, cy, R_major_tick, ang);
     ctx.beginPath();
     ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y);
-    ctx.lineWidth = (isInt ? 2.8 : 0.8) * s;
-    ctx.strokeStyle = isInt ? "#353840" : "#a0a2a8";
+    ctx.lineWidth = (isInt ? 2.5 : 0.6) * s;
+    ctx.strokeStyle = "#1a1c20";
     ctx.stroke();
   }
 
-  // ── 数字标签（竖直不旋转，仅整数位）─────────────────
-  ctx.fillStyle = "#2a2c30";
+  // ── 数字标签 ────────────────────────────────────────────
+  ctx.fillStyle = "#1a1c20";
   ctx.font = "bold " + Math.round(18 * s) + "px 'Consolas','Microsoft YaHei',monospace";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
@@ -212,32 +225,37 @@ function draw() {
   // ── 指针 ──────────────────────────────────────────────
   var nAng = valueToAngle(val, minV, maxV);
   var tip = polarXY(cx, cy, R_needle, nAng);
-  var bw = 11 * s;
+  // 尾尖（短针尾，对面的反方向）
+  var tail = polarXY(cx, cy, R_needle * 0.18, nAng + 180);
+  var bw = 8 * s;
   var bl = polarXY(cx, cy, bw, nAng + 105);
   var br = polarXY(cx, cy, bw, nAng - 105);
-
-  // 指针阴影
-  ctx.save();
-  ctx.shadowColor = "rgba(0,0,0,0.25)";
-  ctx.shadowBlur = 6;
-  ctx.shadowOffsetX = 2; ctx.shadowOffsetY = 2;
   ctx.beginPath();
-  ctx.moveTo(bl.x, bl.y); ctx.lineTo(tip.x, tip.y); ctx.lineTo(br.x, br.y);
+  ctx.moveTo(tail.x, tail.y); ctx.lineTo(bl.x, bl.y);
+  ctx.lineTo(tip.x, tip.y); ctx.lineTo(br.x, br.y);
+  ctx.closePath();
+  ctx.fillStyle = "#1a1c20";
+  ctx.fill();
+  // 针尖红色段
+  var segStart = polarXY(cx, cy, R_needle * 0.55, nAng);
+  var sl = polarXY(cx, cy, bw * 0.5, nAng + 105);
+  var sr = polarXY(cx, cy, bw * 0.5, nAng - 105);
+  ctx.beginPath();
+  ctx.moveTo(segStart.x, segStart.y);
+  ctx.lineTo(sl.x, sl.y); ctx.lineTo(tip.x, tip.y); ctx.lineTo(sr.x, sr.y);
   ctx.closePath();
   ctx.fillStyle = "#c8281e";
   ctx.fill();
-  ctx.restore();
 
   // ── 中心圆 ────────────────────────────────────────────
-  var grad = ctx.createRadialGradient(cx, cy, center_r * 0.3, cx, cy, center_r);
-  grad.addColorStop(0, "#5a5c62");
-  grad.addColorStop(1, "#2a2c30");
   ctx.beginPath();
   ctx.arc(cx, cy, center_r, 0, Math.PI * 2);
-  ctx.fillStyle = grad;
+  ctx.fillStyle = "#1a1c20";
   ctx.fill();
-  ctx.lineWidth = 2.5; ctx.strokeStyle = "#1a1c20";
-  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(cx, cy, center_r * 0.55, 0, Math.PI * 2);
+  ctx.fillStyle = "#4a4c52";
+  ctx.fill();
 
   // ── 量程端点（大字，弧缺口外侧）─────────────────────────
   ctx.fillStyle = "#1a1c20";
@@ -287,15 +305,23 @@ function exportPNG() {
   var R_outer = expSize * 0.42;
   var R_inner = expSize * 0.32;
   var R_major = expSize * 0.35;
-  var R_minor = expSize * 0.33;
   var R_label = expSize * 0.29;
   var R_needle = expSize * 0.32;
   var center_r = expSize * 0.022;
-  var bw = expSize * 0.015;
+  var bw = expSize * 0.01;
 
-  // 白底
+  // 白底 + 金属外圈
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, expSize, expSize);
+  var Rim = R_outer + expSize * 0.018;
+  ctx.beginPath();
+  ctx.arc(cx, cy, Rim, 0, Math.PI * 2);
+  ctx.fillStyle = "#3a3c42";
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(cx, cy, Rim - expSize * 0.004, 0, Math.PI * 2);
+  ctx.fillStyle = "#ffffff";
+  ctx.fill();
 
   // 弧带
   var bandW = R_outer - R_inner;
@@ -307,64 +333,79 @@ function exportPNG() {
     });
     ctx.lineWidth = w; ctx.strokeStyle = color; ctx.stroke();
   }
-  drawSegArcExp((R_outer + R_inner) / 2, bandW, "#e8e9ec");
-  drawSegArcExp(R_outer, 3, "#b8bac0");
-  drawSegArcExp(R_inner, 2.5, "#b8bac0");
+  drawSegArcExp((R_outer + R_inner) / 2, bandW, "#d8d9de");
+  drawSegArcExp(R_outer, 3, "#1a1c20");
+  drawSegArcExp(R_inner, 2.5, "#1a1c20");
 
-  // 刻度（整数粗、非整数细）
+  // 刻度
   for (var i = 0; i <= divs; i++) {
     var frac = i / divs;
     var ang = ARC_START + frac * ARC_SWEEP;
     var valAtTick = minV + (maxV - minV) * frac;
     var isInt = Math.abs(valAtTick - Math.round(valAtTick)) < 1e-9;
-    var p1 = polarXY(cx, cy, R_outer + 2, ang);
+    var p1 = polarXY(cx, cy, R_outer, ang);
     var p2 = polarXY(cx, cy, R_major, ang);
     ctx.beginPath();
     ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y);
     ctx.lineWidth = isInt ? 3 : 1;
-    ctx.strokeStyle = isInt ? "#303238" : "#b0b2b8";
+    ctx.strokeStyle = "#1a1c20";
     ctx.stroke();
   }
 
-  // 标签（竖直不旋转，仅整数位）
-  ctx.fillStyle = "#2a2c30";
+  // 标签
+  ctx.fillStyle = "#1a1c20";
   ctx.font = "bold " + Math.round(expSize * 0.022) + "px 'Consolas','Microsoft YaHei',monospace";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   for (var i = 0; i <= divs; i++) {
     var lblVal = minV + (maxV - minV) * i / divs;
     if (Math.abs(lblVal - Math.round(lblVal)) > 1e-9) continue;
+    if (i === 0 || i === divs) continue;
     var ang = valueToAngle(lblVal, minV, maxV);
     var p = polarXY(cx, cy, R_label, ang);
     ctx.fillText(formatNum(Math.round(lblVal)), p.x, p.y);
   }
 
+  // 端点大字
+  ctx.font = "bold " + Math.round(expSize * 0.052) + "px 'Consolas','Microsoft YaHei',monospace";
+  var endR = R_inner - expSize * 0.038;
+  ctx.fillText(formatNum(minV), polarXY(cx, cy, endR, ARC_START).x,
+                              polarXY(cx, cy, endR, ARC_START).y);
+  ctx.fillText(formatNum(maxV), polarXY(cx, cy, endR, ARC_START + ARC_SWEEP).x,
+                              polarXY(cx, cy, endR, ARC_START + ARC_SWEEP).y);
 
-  // 指针
+  // 指针（黑身+红尖）
   var nAng = valueToAngle(val, minV, maxV);
   var tip = polarXY(cx, cy, R_needle, nAng);
-  var bl = polarXY(cx, cy, bw, nAng + 105);
-  var br = polarXY(cx, cy, bw, nAng - 105);
-  ctx.save();
-  ctx.shadowColor = "rgba(0,0,0,0.2)";
-  ctx.shadowBlur = 8;
-  ctx.shadowOffsetX = 2; ctx.shadowOffsetY = 2;
+  var tail = polarXY(cx, cy, R_needle * 0.18, nAng + 180);
+  var bl = polarXY(cx, cy, bw * expSize / 300, nAng + 105);
+  var br = polarXY(cx, cy, bw * expSize / 300, nAng - 105);
   ctx.beginPath();
-  ctx.moveTo(bl.x, bl.y); ctx.lineTo(tip.x, tip.y); ctx.lineTo(br.x, br.y);
+  ctx.moveTo(tail.x, tail.y); ctx.lineTo(bl.x, bl.y);
+  ctx.lineTo(tip.x, tip.y); ctx.lineTo(br.x, br.y);
+  ctx.closePath();
+  ctx.fillStyle = "#1a1c20";
+  ctx.fill();
+  var segStart = polarXY(cx, cy, R_needle * 0.55, nAng);
+  var sl = polarXY(cx, cy, bw * 0.5 * expSize / 300, nAng + 105);
+  var sr = polarXY(cx, cy, bw * 0.5 * expSize / 300, nAng - 105);
+  ctx.beginPath();
+  ctx.moveTo(segStart.x, segStart.y);
+  ctx.lineTo(sl.x, sl.y); ctx.lineTo(tip.x, tip.y); ctx.lineTo(sr.x, sr.y);
   ctx.closePath();
   ctx.fillStyle = "#c8281e";
   ctx.fill();
-  ctx.restore();
 
   // 中心圆
-  var grad = ctx.createRadialGradient(cx, cy, center_r*0.2, cx, cy, center_r);
-  grad.addColorStop(0, "#5a5c62"); grad.addColorStop(1, "#2a2c30");
   ctx.beginPath();
-  ctx.arc(cx, cy, center_r, 0, Math.PI*2);
-  ctx.fillStyle = grad; ctx.fill();
-  ctx.lineWidth = 3; ctx.strokeStyle = "#1a1c20"; ctx.stroke();
+  ctx.arc(cx, cy, center_r, 0, Math.PI * 2);
+  ctx.fillStyle = "#1a1c20";
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(cx, cy, center_r * 0.55, 0, Math.PI * 2);
+  ctx.fillStyle = "#4a4c52";
+  ctx.fill();
 
-  ctx.shadowColor = "transparent"; ctx.shadowBlur = 0;
   ctx.fillStyle = "#1a1c20";
   ctx.font = "bold " + Math.round(expSize*0.052) + "px 'Consolas','Microsoft YaHei',monospace";
   ctx.textAlign = "center";
