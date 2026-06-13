@@ -122,7 +122,7 @@
 
 <script>
 // ─── 常量 ─────────────────────────────────────────────────
-var ARC_START = 315;   // 左下 7:30（Canvas CW: 0=右 90=下）
+var ARC_START = 135;   // 左下 7:30（Canvas CW: 0=右 90=下）
 var ARC_SWEEP = 270;   // 顺时针跨过顶部到右下 4:30，缺口在底部 6:00
 var SIZE = 620;
 
@@ -166,20 +166,18 @@ function draw() {
 
   // ── 弧带（粗弧线 + 阴影感）─────────────────────────────
   var bandW = R_outer - R_inner;
-  // 弧带：CCW 从 end→start 画 270° 跨顶部，缺口在底部
-  var aStart = (ARC_START + ARC_SWEEP) * Math.PI / 180;
-  var aEnd   = ARC_START * Math.PI / 180;
-  ctx.beginPath();
-  ctx.arc(cx, cy, (R_outer + R_inner) / 2, aStart, aEnd, true);
-  ctx.lineWidth = bandW;
-  ctx.strokeStyle = "#e8e9ec";
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.arc(cx, cy, R_outer, aStart, aEnd, true);
-  ctx.lineWidth = 2.5; ctx.strokeStyle = "#c8cad0"; ctx.stroke();
-  ctx.beginPath();
-  ctx.arc(cx, cy, R_inner, aStart, aEnd, true);
-  ctx.lineWidth = 2; ctx.strokeStyle = "#c8cad0"; ctx.stroke();
+  // 分段弧线（每段 ≤180°，避免 Canvas 自动走短路径）
+  function drawSegArc(r, w, color) {
+    var segs = [[135, 315], [315, 45]];  // 两段合起来 270° CW
+    ctx.beginPath();
+    segs.forEach(function(s) {
+      ctx.arc(cx, cy, r, s[0] * Math.PI / 180, s[1] * Math.PI / 180);
+    });
+    ctx.lineWidth = w; ctx.strokeStyle = color; ctx.stroke();
+  }
+  drawSegArc((R_outer + R_inner) / 2, bandW, "#e8e9ec");
+  drawSegArc(R_outer, 2.5, "#c8cad0");
+  drawSegArc(R_inner, 2, "#c8cad0");
 
   // 弧带内细分纹理（微细线）
   var subPerDiv = 2;  // 每分度 2 细格：长(边界)+短(中点)
@@ -316,17 +314,17 @@ function exportPNG() {
 
   // 弧带
   var bandW = R_outer - R_inner;
-  var aStart = (ARC_START + ARC_SWEEP) * Math.PI / 180;
-  var aEnd   = ARC_START * Math.PI / 180;
-  ctx.beginPath();
-  ctx.arc(cx, cy, (R_outer + R_inner) / 2, aStart, aEnd, true);
-  ctx.lineWidth = bandW; ctx.strokeStyle = "#e8e9ec"; ctx.stroke();
-  ctx.beginPath();
-  ctx.arc(cx, cy, R_outer, aStart, aEnd, true);
-  ctx.lineWidth = 3; ctx.strokeStyle = "#b8bac0"; ctx.stroke();
-  ctx.beginPath();
-  ctx.arc(cx, cy, R_inner, aStart, aEnd, true);
-  ctx.lineWidth = 2.5; ctx.strokeStyle = "#b8bac0"; ctx.stroke();
+  function drawSegArcExp(r, w, color) {
+    var segs = [[135, 315], [315, 45]];
+    ctx.beginPath();
+    segs.forEach(function(s) {
+      ctx.arc(cx, cy, r, s[0] * Math.PI / 180, s[1] * Math.PI / 180);
+    });
+    ctx.lineWidth = w; ctx.strokeStyle = color; ctx.stroke();
+  }
+  drawSegArcExp((R_outer + R_inner) / 2, bandW, "#e8e9ec");
+  drawSegArcExp(R_outer, 3, "#b8bac0");
+  drawSegArcExp(R_inner, 2.5, "#b8bac0");
 
   // 刻度
   var subPerDiv = 2;  // 每分度 2 细格：长(边界)+短(中点)
