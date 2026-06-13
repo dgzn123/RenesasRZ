@@ -70,6 +70,8 @@
 | `/home/root/ai/best_points_320.onnx` | 第二阶段模型（四点检测） |
 | `/home/root/ai/capture/` | 仪表读数拍摄照片 |
 | `/home/root/ai/output/` | 仪表读数结果 |
+| `/tmp/realtime_frame.jpg` | 实时读取抓帧暂存（ramfs） |
+| `/home/root/ai/output/curve_*.json` | 实时曲线数据 |
 | `/tmp/capture.pid` | 摄像头进程 PID |
 | `/tmp/lidar.pid` | 雷达进程 PID |
 | `/tmp/tag.pid` | Tag 检测进程 PID |
@@ -276,6 +278,16 @@
   curl "http://127.0.0.1:8086/read?image=/home/root/camera-server/photos/photo_20260610_141207.jpg&min=0&max=25&divisions=50&conf=0.05"
   ```
 - **回退旧流程**: 部署老的 `meter-read.php` 和 `index.html` 即可恢复 shell_exec+poll 模式
+
+## 实时曲线读取（2026-06-13 上线）
+
+- **入口**: 仪表读数标题栏 `[实时读取]` 按钮
+- **流程**: 点击后 Tag 定位与推理终端上方平滑展开 Canvas 面板（clip-path 圆形展开），每秒自动抓帧→推理→打点绘制曲线
+- **数据路径**: 抓帧写 `/tmp/realtime_frame.jpg`（ramfs 不伤 SD），曲线保留最近 60 点滚动窗口
+- **停止**: 再点 `[停止读取]` 画布收起，全部点打包写入 `/home/root/ai/output/curve_YYYYmmdd_HHMMSS.json`，历史记录标记 `type:realtime`
+- **历史查看**: 读数历史中实时条目显示 `查看曲线`，弹窗 Canvas 重绘
+- **PHP 端点**: `meter-read.php?action=realtime_read`（轻量查询）、`save_curve`（POST 存数据）、`get_curve?id=xxx`（读取）
+- **切换标签页**: 自动停止实时读取
 
 ## 常用命令
 
