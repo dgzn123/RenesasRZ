@@ -94,7 +94,25 @@
     <label>标题（可选）</label>
     <input type="text" id="inTitle" value="" placeholder="如: 压力表" oninput="draw()">
   </div>
-  <button class="btn export" onclick="exportPNG()">导出 PNG</button>
+  <hr style="border:none;border-top:1px solid var(--border);margin:4px 0;">
+  <h2 style="font-size:1rem;">平滑动画</h2>
+  <div class="field">
+    <label>起始值</label>
+    <input type="number" id="inFrom" value="0" step="any" oninput="draw()">
+  </div>
+  <div class="field">
+    <label>结束值</label>
+    <input type="number" id="inTo" value="25" step="any" oninput="draw()">
+  </div>
+  <div class="field">
+    <label>持续时间 (秒)</label>
+    <input type="number" id="inDur" value="3" step="0.5" min="0.5" max="30" oninput="draw()">
+  </div>
+  <div style="display:flex;gap:8px;">
+    <button class="btn export" style="flex:1;" id="btnPlay" onclick="toggleAnim()">播放</button>
+    <button class="btn" style="flex:1;background:#e5e7eb;color:#333;" onclick="stopAnim()">重置</button>
+  </div>
+  <button class="btn export" onclick="exportPNG()" style="margin-top:8px;">导出 PNG</button>
 </div>
 
 <div class="meter-panel">
@@ -148,23 +166,19 @@ function draw() {
 
   // ── 弧带（粗弧线 + 阴影感）─────────────────────────────
   var bandW = R_outer - R_inner;
+  // 弧带：CCW 从 end→start 画 270° 跨顶部，缺口在底部
+  var aStart = (ARC_START + ARC_SWEEP) * Math.PI / 180;
+  var aEnd   = ARC_START * Math.PI / 180;
   ctx.beginPath();
-  ctx.arc(cx, cy, (R_outer + R_inner) / 2,
-          ARC_START * Math.PI / 180, (ARC_START + ARC_SWEEP) * Math.PI / 180);
+  ctx.arc(cx, cy, (R_outer + R_inner) / 2, aStart, aEnd, true);
   ctx.lineWidth = bandW;
   ctx.strokeStyle = "#e8e9ec";
   ctx.stroke();
-
-  // 外边界
   ctx.beginPath();
-  ctx.arc(cx, cy, R_outer, ARC_START * Math.PI / 180,
-          (ARC_START + ARC_SWEEP) * Math.PI / 180);
+  ctx.arc(cx, cy, R_outer, aStart, aEnd, true);
   ctx.lineWidth = 2.5; ctx.strokeStyle = "#c8cad0"; ctx.stroke();
-
-  // 内边界
   ctx.beginPath();
-  ctx.arc(cx, cy, R_inner, ARC_START * Math.PI / 180,
-          (ARC_START + ARC_SWEEP) * Math.PI / 180);
+  ctx.arc(cx, cy, R_inner, aStart, aEnd, true);
   ctx.lineWidth = 2; ctx.strokeStyle = "#c8cad0"; ctx.stroke();
 
   // 弧带内细分纹理（微细线）
@@ -202,7 +216,7 @@ function draw() {
   // ── 数字标签 ──────────────────────────────────────────
   var labelStep = divs > 25 ? Math.ceil(divs / 10) : 1;
   ctx.fillStyle = "#2a2c30";
-  ctx.font = "bold 10px 'Consolas','Microsoft YaHei',monospace";
+  ctx.font = "bold 13px 'Consolas','Microsoft YaHei',monospace";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   for (var i = 0; i <= divs; i++) {
@@ -302,15 +316,16 @@ function exportPNG() {
 
   // 弧带
   var bandW = R_outer - R_inner;
+  var aStart = (ARC_START + ARC_SWEEP) * Math.PI / 180;
+  var aEnd   = ARC_START * Math.PI / 180;
   ctx.beginPath();
-  ctx.arc(cx, cy, (R_outer + R_inner) / 2,
-          ARC_START * Math.PI / 180, (ARC_START + ARC_SWEEP) * Math.PI / 180);
+  ctx.arc(cx, cy, (R_outer + R_inner) / 2, aStart, aEnd, true);
   ctx.lineWidth = bandW; ctx.strokeStyle = "#e8e9ec"; ctx.stroke();
   ctx.beginPath();
-  ctx.arc(cx, cy, R_outer, ARC_START * Math.PI / 180, (ARC_START + ARC_SWEEP) * Math.PI / 180);
+  ctx.arc(cx, cy, R_outer, aStart, aEnd, true);
   ctx.lineWidth = 3; ctx.strokeStyle = "#b8bac0"; ctx.stroke();
   ctx.beginPath();
-  ctx.arc(cx, cy, R_inner, ARC_START * Math.PI / 180, (ARC_START + ARC_SWEEP) * Math.PI / 180);
+  ctx.arc(cx, cy, R_inner, aStart, aEnd, true);
   ctx.lineWidth = 2.5; ctx.strokeStyle = "#b8bac0"; ctx.stroke();
 
   // 刻度
@@ -392,6 +407,49 @@ function exportPNG() {
   link.download = "meter.png";
   link.href = expCanvas.toDataURL("image/png");
   link.click();
+}
+
+// ── 平滑动画 ─────────────────────────────────────────────
+var animId = null;
+var animStartT = 0;
+var animFrom = 0;
+var animTo = 0;
+var animDur = 3;
+
+function toggleAnim() {
+  if (animId) { stopAnim(); return; }
+  var from = parseFloat(document.getElementById("inFrom").value);
+  var to   = parseFloat(document.getElementById("inTo").value);
+  var dur  = parseFloat(document.getElementById("inDur").value) || 3;
+  if (isNaN(from) || isNaN(to) || from === to) return;
+  animFrom = from; animTo = to; animDur = dur * 1000;
+  animStartT = performance.now();
+  document.getElementById("btnPlay").textContent = "播放中…";
+  animate();
+}
+
+function stopAnim() {
+  if (animId) { cancelAnimationFrame(animId); animId = null; }
+  document.getElementById("btnPlay").textContent = "播放";
+  document.getElementById("inValue").value = animFrom;
+  draw();
+}
+
+function animate(now) {
+  if (!animId) return;
+  var elapsed = now - animStartT;
+  var t = Math.min(elapsed / animDur, 1.0);
+  // ease-in-out
+  t = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+  var v = animFrom + (animTo - animFrom) * t;
+  document.getElementById("inValue").value = v.toFixed(4);
+  draw();
+  if (t < 1) {
+    animId = requestAnimationFrame(animate);
+  } else {
+    animId = null;
+    document.getElementById("btnPlay").textContent = "播放";
+  }
 }
 
 draw();
