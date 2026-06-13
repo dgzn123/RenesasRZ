@@ -20,16 +20,17 @@
   body {
     font-family: "Microsoft YaHei", "微软雅黑", "Segoe UI", sans-serif;
     background: var(--bg); display: flex;
-    justify-content: center; align-items: center;
-    min-height: 100vh; padding: 20px; gap: 28px;
-    flex-wrap: wrap;
+    justify-content: center; align-items: flex-start;
+    height: 100vh; padding: 12px; gap: 18px;
+    overflow: hidden;
   }
 
   /* ── 控制面板 ──────────────────────────────── */
   .controls {
     background: var(--panel); border-radius: var(--radius);
-    box-shadow: var(--shadow); padding: 28px 24px;
-    width: 260px; display: flex; flex-direction: column; gap: 14px;
+    box-shadow: var(--shadow); padding: 20px 18px;
+    width: 240px; display: flex; flex-direction: column; gap: 10px;
+    flex-shrink: 0;
   }
   .controls h2 {
     font-size: 1.15rem; font-weight: 700; color: var(--primary);
@@ -61,8 +62,9 @@
   /* ── 仪表面板 ──────────────────────────────── */
   .meter-panel {
     background: var(--panel); border-radius: var(--radius);
-    box-shadow: var(--shadow); padding: 28px;
+    box-shadow: var(--shadow); padding: 18px;
     display: flex; flex-direction: column; align-items: center;
+    flex: 1; max-height: calc(100vh - 24px);
   }
   .meter-panel canvas { display: block; }
   .meter-panel .info {
@@ -125,11 +127,7 @@
 // ─── 常量 ─────────────────────────────────────────────────
 var ARC_START = 135;   // 左下 7:30（Canvas CW: 0=右 90=下）
 var ARC_SWEEP = 270;   // 顺时针跨过顶部到右下 4:30，缺口在底部 6:00
-var SIZE = 620;
-
 var canvas = document.getElementById("meterCanvas");
-canvas.width = SIZE;
-canvas.height = SIZE;
 
 function valueToAngle(val, minV, maxV) {
   var frac = (val - minV) / (maxV - minV);
@@ -143,6 +141,8 @@ function polarXY(cx, cy, r, deg) {
 }
 
 function draw() {
+  var SIZE = Math.min(window.innerWidth - 300, window.innerHeight - 60, 800);
+  canvas.width = SIZE; canvas.height = SIZE;
   var ctx = canvas.getContext("2d");
   ctx.clearRect(0, 0, SIZE, SIZE);
 
@@ -157,13 +157,13 @@ function draw() {
   document.getElementById("infoDivs").textContent = divs;
 
   var cx = SIZE / 2, cy = SIZE / 2;
-  var R_outer = 260;
-  var R_inner = 198;
-  var R_major_tick = 222;   // 长刻度终点
-  var R_minor_tick = 209;   // 短刻度终点
-  var R_label = 182;
-  var R_needle = 200;
-  var center_r = 14;
+  var s = SIZE / 620;  // 比例因子
+  var R_outer = 300 * s;
+  var R_inner = 230 * s;
+  var R_major_tick = 258 * s;
+  var R_label = 212 * s;
+  var R_needle = 235 * s;
+  var center_r = 16 * s;
 
   // ── 弧带（粗弧线 + 阴影感）─────────────────────────────
   var bandW = R_outer - R_inner;
@@ -177,8 +177,8 @@ function draw() {
     ctx.lineWidth = w; ctx.strokeStyle = color; ctx.stroke();
   }
   drawSegArc((R_outer + R_inner) / 2, bandW, "#e8e9ec");
-  drawSegArc(R_outer, 2.5, "#c8cad0");
-  drawSegArc(R_inner, 2, "#c8cad0");
+  drawSegArc(R_outer, 2.5 * s, "#c8cad0");
+  drawSegArc(R_inner, 2 * s, "#c8cad0");
 
   // ── 刻度线（每分度一条，整数粗/非整数细）───────────
   for (var i = 0; i <= divs; i++) {
@@ -190,14 +190,14 @@ function draw() {
     var p2 = polarXY(cx, cy, R_major_tick, ang);
     ctx.beginPath();
     ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y);
-    ctx.lineWidth = isInt ? 2.8 : 0.8;
+    ctx.lineWidth = (isInt ? 2.8 : 0.8) * s;
     ctx.strokeStyle = isInt ? "#353840" : "#a0a2a8";
     ctx.stroke();
   }
 
   // ── 数字标签（竖直不旋转，仅整数位）─────────────────
   ctx.fillStyle = "#2a2c30";
-  ctx.font = "bold 16px 'Consolas','Microsoft YaHei',monospace";
+  ctx.font = "bold " + Math.round(18 * s) + "px 'Consolas','Microsoft YaHei',monospace";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   for (var i = 0; i <= divs; i++) {
@@ -212,7 +212,7 @@ function draw() {
   // ── 指针 ──────────────────────────────────────────────
   var nAng = valueToAngle(val, minV, maxV);
   var tip = polarXY(cx, cy, R_needle, nAng);
-  var bw = 11;
+  var bw = 11 * s;
   var bl = polarXY(cx, cy, bw, nAng + 105);
   var br = polarXY(cx, cy, bw, nAng - 105);
 
@@ -239,14 +239,15 @@ function draw() {
   ctx.lineWidth = 2.5; ctx.strokeStyle = "#1a1c20";
   ctx.stroke();
 
-  // ── 量程端点（大字）─────────────────────────────────────
+  // ── 量程端点（大字，弧缺口外侧）─────────────────────────
   ctx.fillStyle = "#1a1c20";
-  ctx.font = "bold 30px 'Consolas','Microsoft YaHei',monospace";
+  ctx.font = "bold " + Math.round(36 * s) + "px 'Consolas','Microsoft YaHei',monospace";
   ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillText(formatNum(minV), polarXY(cx, cy, R_label + 14, ARC_START).x,
-                              polarXY(cx, cy, R_label + 14, ARC_START).y);
-  ctx.fillText(formatNum(maxV), polarXY(cx, cy, R_label + 14, ARC_START + ARC_SWEEP).x,
-                              polarXY(cx, cy, R_label + 14, ARC_START + ARC_SWEEP).y);
+  var endR = R_inner - 22 * s;
+  ctx.fillText(formatNum(minV), polarXY(cx, cy, endR, ARC_START).x,
+                              polarXY(cx, cy, endR, ARC_START).y);
+  ctx.fillText(formatNum(maxV), polarXY(cx, cy, endR, ARC_START + ARC_SWEEP).x,
+                              polarXY(cx, cy, endR, ARC_START + ARC_SWEEP).y);
 
   // ── 当前值 → HTML ──────────────────────────────────────
   document.getElementById("meterValue").textContent = val.toFixed(2);
