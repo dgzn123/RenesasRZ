@@ -241,9 +241,9 @@ function draw() {
 
   // ── 量程端点（大字，弧缺口外侧）─────────────────────────
   ctx.fillStyle = "#1a1c20";
-  ctx.font = "bold " + Math.round(36 * s) + "px 'Consolas','Microsoft YaHei',monospace";
+  ctx.font = "bold " + Math.round(52 * s) + "px 'Consolas','Microsoft YaHei',monospace";
   ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  var endR = R_inner - 22 * s;
+  var endR = R_inner - 30 * s;
   ctx.fillText(formatNum(minV), polarXY(cx, cy, endR, ARC_START).x,
                               polarXY(cx, cy, endR, ARC_START).y);
   ctx.fillText(formatNum(maxV), polarXY(cx, cy, endR, ARC_START + ARC_SWEEP).x,
