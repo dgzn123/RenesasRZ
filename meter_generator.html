@@ -98,11 +98,11 @@
   <h2 style="font-size:1rem;">平滑动画</h2>
   <div class="field">
     <label>起始值</label>
-    <input type="number" id="inFrom" value="0" step="any" oninput="draw()">
+    <input type="number" id="inFrom" value="0" step="any" oninput="draw()" style="font-size:1.3rem;font-weight:700;">
   </div>
   <div class="field">
     <label>结束值</label>
-    <input type="number" id="inTo" value="25" step="any" oninput="draw()">
+    <input type="number" id="inTo" value="25" step="any" oninput="draw()" style="font-size:1.3rem;font-weight:700;">
   </div>
   <div class="field">
     <label>持续时间 (秒)</label>
@@ -117,6 +117,7 @@
 
 <div class="meter-panel">
   <canvas id="meterCanvas"></canvas>
+  <div id="meterValue" style="font-size:42px;font-weight:700;font-family:'Consolas','Microsoft YaHei',monospace;color:#1a1c20;margin-top:10px;">5.95</div>
   <div class="info">刻度 <span id="infoRange">0 ~ 25</span> &nbsp;|&nbsp; 分度 <span id="infoDivs">50</span></div>
 </div>
 
@@ -237,12 +238,8 @@ function draw() {
   ctx.lineWidth = 2.5; ctx.strokeStyle = "#1a1c20";
   ctx.stroke();
 
-  // ── 当前值 ────────────────────────────────────────────
-  ctx.shadowColor = "transparent"; ctx.shadowBlur = 0;
-  ctx.fillStyle = "#1a1c20";
-  ctx.font = "bold 30px 'Consolas','Microsoft YaHei',monospace";
-  ctx.textAlign = "center";
-  ctx.fillText(val.toFixed(2), cx, cy + center_r + 50);
+  // ── 当前值 → HTML ──────────────────────────────────────
+  document.getElementById("meterValue").textContent = val.toFixed(2);
 
   // ── 标题 ──────────────────────────────────────────────
   if (title) {
