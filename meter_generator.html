@@ -415,6 +415,57 @@ function exportPNG() {
     ctx.fillText(title, cx, cy + center_r + expSize*0.14);
   }
 
+  // ── 真实感后处理（噪声 + 模糊 + 暗角）───────────────────
+  (function realisticPost() {
+    var idata = ctx.getImageData(0, 0, expSize, expSize);
+    var d = idata.data;
+    var cx2 = expSize / 2, cy2 = expSize / 2;
+    var maxR = expSize * 0.48;
+
+    for (var y = 0; y < expSize; y++) {
+      for (var x = 0; x < expSize; x++) {
+        var i = (y * expSize + x) * 4;
+
+        // 高斯噪声 ±12
+        var noise = (Math.random() - 0.5) * 24;
+        d[i]   = Math.min(255, Math.max(0, d[i]   + noise));
+        d[i+1] = Math.min(255, Math.max(0, d[i+1] + noise));
+        d[i+2] = Math.min(255, Math.max(0, d[i+2] + noise));
+
+        // 暗角：边缘变暗
+        var dx = x - cx2, dy = y - cy2;
+        var dist = Math.sqrt(dx * dx + dy * dy);
+        var vignette = dist / maxR;
+        if (vignette > 0.55) {
+          var v = (vignette - 0.55) / 0.45;
+          v = Math.min(1, v * v * 0.5);
+          d[i]   = Math.round(d[i]   * (1 - v));
+          d[i+1] = Math.round(d[i+1] * (1 - v));
+          d[i+2] = Math.round(d[i+2] * (1 - v));
+        }
+      }
+    }
+
+    // 轻度高斯模糊（3×3 近似：两次 box blur）
+    for (var pass = 0; pass < 2; pass++) {
+      var src = new Uint8ClampedArray(d);
+      for (var y = 1; y < expSize - 1; y++) {
+        for (var x = 1; x < expSize - 1; x++) {
+          var idx = (y * expSize + x) * 4;
+          for (var c = 0; c < 3; c++) {
+            var sum = 0;
+            for (var dy2 = -1; dy2 <= 1; dy2++)
+              for (var dx2 = -1; dx2 <= 1; dx2++)
+                sum += src[((y + dy2) * expSize + (x + dx2)) * 4 + c];
+            d[idx + c] = Math.round(sum / 9);
+          }
+        }
+      }
+    }
+
+    ctx.putImageData(idata, 0, 0);
+  })();
+
   var link = document.createElement("a");
   link.download = "meter.png";
   link.href = expCanvas.toDataURL("image/png");
