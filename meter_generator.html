@@ -168,7 +168,7 @@ function draw() {
   var bandW = R_outer - R_inner;
   // 分段弧线（每段 ≤180°，避免 Canvas 自动走短路径）
   function drawSegArc(r, w, color) {
-    var segs = [[135, 315], [315, 45]];  // 两段合起来 270° CW
+    var segs = [[135, 225], [225, 315], [315, 45]];  // 三段各 90°，无法走捷径
     ctx.beginPath();
     segs.forEach(function(s) {
       ctx.arc(cx, cy, r, s[0] * Math.PI / 180, s[1] * Math.PI / 180);
@@ -315,7 +315,7 @@ function exportPNG() {
   // 弧带
   var bandW = R_outer - R_inner;
   function drawSegArcExp(r, w, color) {
-    var segs = [[135, 315], [315, 45]];
+    var segs = [[135, 225], [225, 315], [315, 45]];
     ctx.beginPath();
     segs.forEach(function(s) {
       ctx.arc(cx, cy, r, s[0] * Math.PI / 180, s[1] * Math.PI / 180);
@@ -423,7 +423,7 @@ function toggleAnim() {
   animFrom = from; animTo = to; animDur = dur * 1000;
   animStartT = performance.now();
   document.getElementById("btnPlay").textContent = "播放中…";
-  animate();
+  animId = requestAnimationFrame(animate);
 }
 
 function stopAnim() {
@@ -434,10 +434,8 @@ function stopAnim() {
 }
 
 function animate(now) {
-  if (!animId) return;
   var elapsed = now - animStartT;
   var t = Math.min(elapsed / animDur, 1.0);
-  // ease-in-out
   t = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
   var v = animFrom + (animTo - animFrom) * t;
   document.getElementById("inValue").value = v.toFixed(4);
