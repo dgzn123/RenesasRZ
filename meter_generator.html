@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>仪表生成器 — Meter Generator</title>
+<style>
+  :root {
+    --primary: #002FA7;
+    --bg: #F1F2F5;
+    --panel: #FFFFFF;
+    --text: #1a1c20;
+    --text2: #6b7280;
+    --border: #e5e7eb;
+    --radius: 10px;
+    --shadow: 0 2px 12px rgba(0,0,0,0.08);
+    --danger: #c8281e;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "Microsoft YaHei", "微软雅黑", "Segoe UI", sans-serif;
+    background: var(--bg); display: flex;
+    justify-content: center; align-items: center;
+    min-height: 100vh; padding: 20px; gap: 28px;
+    flex-wrap: wrap;
+  }
+
+  /* ── 控制面板 ──────────────────────────────── */
+  .controls {
+    background: var(--panel); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 28px 24px;
+    width: 260px; display: flex; flex-direction: column; gap: 14px;
+  }
+  .controls h2 {
+    font-size: 1.15rem; font-weight: 700; color: var(--primary);
+    letter-spacing: 1px; margin-bottom: 4px;
+  }
+  .field { display: flex; flex-direction: column; gap: 3px; }
+  .field label {
+    font-size: 0.8rem; font-weight: 600; color: var(--text2);
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .field input {
+    padding: 8px 10px; border: 1px solid var(--border);
+    border-radius: 6px; font-size: 0.95rem; font-family: "Consolas", monospace;
+    outline: none; transition: border 0.2s;
+  }
+  .field input:focus { border-color: var(--primary); }
+
+  .btn {
+    padding: 10px 0; border: none; border-radius: 6px;
+    font-size: 0.95rem; font-weight: 700; cursor: pointer;
+    letter-spacing: 1px; transition: opacity 0.2s;
+  }
+  .btn.export {
+    background: var(--primary); color: #fff;
+    box-shadow: 0 2px 6px rgba(0,47,167,0.25);
+  }
+  .btn.export:hover { opacity: 0.88; }
+
+  /* ── 仪表面板 ──────────────────────────────── */
+  .meter-panel {
+    background: var(--panel); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 28px;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  .meter-panel canvas { display: block; }
+  .meter-panel .info {
+    margin-top: 8px; font-size: 0.78rem; color: var(--text2);
+  }
+</style>
+</head>
+<body>
+
+<div class="controls">
+  <h2>仪表参数</h2>
+  <div class="field">
+    <label>最小值</label>
+    <input type="number" id="inMin" value="0" step="any" oninput="draw()">
+  </div>
+  <div class="field">
+    <label>最大值</label>
+    <input type="number" id="inMax" value="25" step="any" oninput="draw()">
+  </div>
+  <div class="field">
+    <label>分度数</label>
+    <input type="number" id="inDivs" value="50" step="1" min="1" oninput="draw()">
+  </div>
+  <div class="field">
+    <label>当前值</label>
+    <input type="number" id="inValue" value="5.95" step="any" oninput="draw()">
+  </div>
+  <div class="field">
+    <label>标题（可选）</label>
+    <input type="text" id="inTitle" value="" placeholder="如: 压力表" oninput="draw()">
+  </div>
+  <button class="btn export" onclick="exportPNG()">导出 PNG</button>
+</div>
+
+<div class="meter-panel">
+  <canvas id="meterCanvas"></canvas>
+  <div class="info">刻度 <span id="infoRange">0 ~ 25</span> &nbsp;|&nbsp; 分度 <span id="infoDivs">50</span></div>
+</div>
+
+<script>
+// ─── 常量 ─────────────────────────────────────────────────
+var ARC_START = 315;   // 右下起始，数学角度 0°=右 CCW
+var ARC_SWEEP = 270;   // 跨度，缺口在底部
+var SIZE = 620;
+
+var canvas = document.getElementById("meterCanvas");
+canvas.width = SIZE;
+canvas.height = SIZE;
+
+function valueToAngle(val, minV, maxV) {
+  var frac = (val - minV) / (maxV - minV);
+  frac = Math.max(0, Math.min(1, frac));
+  return ARC_START + frac * ARC_SWEEP;
+}
+
+function polarXY(cx, cy, r, deg) {
+  var rad = deg * Math.PI / 180;
+  return { x: cx + r * Math.cos(rad), y: cy - r * Math.sin(rad) };
+}
+
+function draw() {
+  var ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, SIZE, SIZE);
+
+  var minV = parseFloat(document.getElementById("inMin").value) || 0;
+  var maxV = parseFloat(document.getElementById("inMax").value) || 25;
+  var divs = parseInt(document.getElementById("inDivs").value) || 50;
+  var val  = parseFloat(document.getElementById("inValue").value) || 0;
+  var title = document.getElementById("inTitle").value.trim();
+  if (minV >= maxV || divs < 1) return;
+
+  document.getElementById("infoRange").textContent = minV + " ~ " + maxV;
+  document.getElementById("infoDivs").textContent = divs;
+
+  var cx = SIZE / 2, cy = SIZE / 2;
+  var R_outer = 260;
+  var R_inner = 198;
+  var R_major_tick = 222;   // 长刻度终点
+  var R_minor_tick = 209;   // 短刻度终点
+  var R_label = 182;
+  var R_needle = 200;
+  var center_r = 14;
+
+  // ── 弧带（粗弧线 + 阴影感）─────────────────────────────
+  var bandW = R_outer - R_inner;
+  ctx.beginPath();
+  ctx.arc(cx, cy, (R_outer + R_inner) / 2,
+          ARC_START * Math.PI / 180, (ARC_START + ARC_SWEEP) * Math.PI / 180);
+  ctx.lineWidth = bandW;
+  ctx.strokeStyle = "#e8e9ec";
+  ctx.stroke();
+
+  // 外边界
+  ctx.beginPath();
+  ctx.arc(cx, cy, R_outer, ARC_START * Math.PI / 180,
+          (ARC_START + ARC_SWEEP) * Math.PI / 180);
+  ctx.lineWidth = 2.5; ctx.strokeStyle = "#c8cad0"; ctx.stroke();
+
+  // 内边界
+  ctx.beginPath();
+  ctx.arc(cx, cy, R_inner, ARC_START * Math.PI / 180,
+          (ARC_START + ARC_SWEEP) * Math.PI / 180);
+  ctx.lineWidth = 2; ctx.strokeStyle = "#c8cad0"; ctx.stroke();
+
+  // 弧带内细分纹理（微细线）
+  var subPerDiv = 4;
+  var totalSub = divs * subPerDiv;
+  for (var i = 0; i <= totalSub; i++) {
+    var frac = i / totalSub;
+    var ang = ARC_START + frac * ARC_SWEEP;
+    var isMajor = (i % subPerDiv === 0);
+    var isMid = (i % subPerDiv === 2);   // 中刻度（半格）
+    var rEnd;
+    if (i === 0 || i === totalSub) {
+      rEnd = R_major_tick;   // 端点：长刻度
+    } else if (isMajor) {
+      rEnd = R_major_tick;
+    } else if (isMid) {
+      rEnd = R_minor_tick;
+    } else {
+      rEnd = R_inner + 5;
+    }
+    var p1 = polarXY(cx, cy, R_outer + 2, ang);
+    var p2 = polarXY(cx, cy, rEnd, ang);
+    ctx.beginPath();
+    ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y);
+    if (isMajor || isMid || i === 0 || i === totalSub) {
+      ctx.lineWidth = isMajor ? 2.8 : 1.8;
+      ctx.strokeStyle = "#353840";
+    } else {
+      ctx.lineWidth = 0.8;
+      ctx.strokeStyle = "#b8bac0";
+    }
+    ctx.stroke();
+  }
+
+  // ── 数字标签 ──────────────────────────────────────────
+  var labelStep = divs > 25 ? Math.ceil(divs / 10) : 1;
+  ctx.fillStyle = "#2a2c30";
+  ctx.font = "bold 10px 'Consolas','Microsoft YaHei',monospace";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  for (var i = 0; i <= divs; i++) {
+    if (i % labelStep !== 0 && i !== 0 && i !== divs) continue;
+    var lblVal = minV + (maxV - minV) * i / divs;
+    var ang = valueToAngle(lblVal, minV, maxV);
+    var p = polarXY(cx, cy, R_label, ang);
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    var rot = (ang - 90) * Math.PI / 180;
+    ctx.rotate(rot);
+    ctx.fillText(formatNum(lblVal), 0, 0);
+    ctx.restore();
+  }
+
+  // ── 指针 ──────────────────────────────────────────────
+  var nAng = valueToAngle(val, minV, maxV);
+  var tip = polarXY(cx, cy, R_needle, nAng);
+  var bw = 11;
+  var bl = polarXY(cx, cy, bw, nAng + 105);
+  var br = polarXY(cx, cy, bw, nAng - 105);
+
+  // 指针阴影
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,0.25)";
+  ctx.shadowBlur = 6;
+  ctx.shadowOffsetX = 2; ctx.shadowOffsetY = 2;
+  ctx.beginPath();
+  ctx.moveTo(bl.x, bl.y); ctx.lineTo(tip.x, tip.y); ctx.lineTo(br.x, br.y);
+  ctx.closePath();
+  ctx.fillStyle = "#c8281e";
+  ctx.fill();
+  ctx.restore();
+
+  // ── 中心圆 ────────────────────────────────────────────
+  var grad = ctx.createRadialGradient(cx, cy, center_r * 0.3, cx, cy, center_r);
+  grad.addColorStop(0, "#5a5c62");
+  grad.addColorStop(1, "#2a2c30");
+  ctx.beginPath();
+  ctx.arc(cx, cy, center_r, 0, Math.PI * 2);
+  ctx.fillStyle = grad;
+  ctx.fill();
+  ctx.lineWidth = 2.5; ctx.strokeStyle = "#1a1c20";
+  ctx.stroke();
+
+  // ── 当前值 ────────────────────────────────────────────
+  ctx.shadowColor = "transparent"; ctx.shadowBlur = 0;
+  ctx.fillStyle = "#1a1c20";
+  ctx.font = "bold 30px 'Consolas','Microsoft YaHei',monospace";
+  ctx.textAlign = "center";
+  ctx.fillText(val.toFixed(2), cx, cy + center_r + 50);
+
+  // ── 标题 ──────────────────────────────────────────────
+  if (title) {
+    ctx.fillStyle = "#808288";
+    ctx.font = "13px 'Microsoft YaHei','微软雅黑',sans-serif";
+    ctx.fillText(title, cx, cy + center_r + 78);
+  }
+}
+
+function formatNum(n) {
+  if (Number.isInteger(n)) return n.toString();
+  var abs = Math.abs(n);
+  if (abs >= 100) return n.toFixed(0);
+  if (abs >= 10) return n.toFixed(1);
+  if (abs >= 1) return n.toFixed(2);
+  return n.toFixed(3);
+}
+
+// ── 导出 PNG ─────────────────────────────────────────────
+function exportPNG() {
+  // 生成大尺寸导出
+  var expSize = 1200;
+  var expCanvas = document.createElement("canvas");
+  expCanvas.width = expSize; expCanvas.height = expSize;
+  var ctx = expCanvas.getContext("2d");
+
+  var minV = parseFloat(document.getElementById("inMin").value) || 0;
+  var maxV = parseFloat(document.getElementById("inMax").value) || 25;
+  var divs = parseInt(document.getElementById("inDivs").value) || 50;
+  var val  = parseFloat(document.getElementById("inValue").value) || 0;
+  var title = document.getElementById("inTitle").value.trim();
+
+  var cx = expSize / 2, cy = expSize / 2;
+  var R_outer = expSize * 0.42;
+  var R_inner = expSize * 0.32;
+  var R_major = expSize * 0.35;
+  var R_minor = expSize * 0.33;
+  var R_label = expSize * 0.29;
+  var R_needle = expSize * 0.32;
+  var center_r = expSize * 0.022;
+  var bw = expSize * 0.015;
+
+  // 白底
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, expSize, expSize);
+
+  // 弧带
+  var bandW = R_outer - R_inner;
+  ctx.beginPath();
+  ctx.arc(cx, cy, (R_outer + R_inner) / 2,
+          ARC_START * Math.PI / 180, (ARC_START + ARC_SWEEP) * Math.PI / 180);
+  ctx.lineWidth = bandW; ctx.strokeStyle = "#e8e9ec"; ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(cx, cy, R_outer, ARC_START * Math.PI / 180, (ARC_START + ARC_SWEEP) * Math.PI / 180);
+  ctx.lineWidth = 3; ctx.strokeStyle = "#b8bac0"; ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(cx, cy, R_inner, ARC_START * Math.PI / 180, (ARC_START + ARC_SWEEP) * Math.PI / 180);
+  ctx.lineWidth = 2.5; ctx.strokeStyle = "#b8bac0"; ctx.stroke();
+
+  // 刻度
+  var subPerDiv = 4;
+  var totalSub = divs * subPerDiv;
+  for (var i = 0; i <= totalSub; i++) {
+    var frac = i / totalSub;
+    var ang = ARC_START + frac * ARC_SWEEP;
+    var isMajor = (i % subPerDiv === 0);
+    var isMid = (i % subPerDiv === 2);
+    var rEnd;
+    if (i === 0 || i === totalSub) rEnd = R_major;
+    else if (isMajor) rEnd = R_major;
+    else if (isMid) rEnd = R_minor;
+    else rEnd = R_inner + expSize * 0.008;
+    var p1 = polarXY(cx, cy, R_outer + 2, ang);
+    var p2 = polarXY(cx, cy, rEnd, ang);
+    ctx.beginPath();
+    ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y);
+    ctx.lineWidth = (isMajor || isMid) ? (isMajor ? 3 : 2) : 1;
+    ctx.strokeStyle = (isMajor || isMid) ? "#303238" : "#b0b2b8";
+    ctx.stroke();
+  }
+
+  // 标签
+  var labelStep = divs > 25 ? Math.ceil(divs / 10) : 1;
+  ctx.fillStyle = "#2a2c30";
+  ctx.font = "bold " + Math.round(expSize * 0.018) + "px 'Consolas','Microsoft YaHei',monospace";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  for (var i = 0; i <= divs; i++) {
+    if (i % labelStep !== 0 && i !== 0 && i !== divs) continue;
+    var lblVal = minV + (maxV - minV) * i / divs;
+    var ang = valueToAngle(lblVal, minV, maxV);
+    var p = polarXY(cx, cy, R_label, ang);
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate((ang - 90) * Math.PI / 180);
+    ctx.fillText(formatNum(lblVal), 0, 0);
+    ctx.restore();
+  }
+
+  // 指针
+  var nAng = valueToAngle(val, minV, maxV);
+  var tip = polarXY(cx, cy, R_needle, nAng);
+  var bl = polarXY(cx, cy, bw, nAng + 105);
+  var br = polarXY(cx, cy, bw, nAng - 105);
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,0.2)";
+  ctx.shadowBlur = 8;
+  ctx.shadowOffsetX = 2; ctx.shadowOffsetY = 2;
+  ctx.beginPath();
+  ctx.moveTo(bl.x, bl.y); ctx.lineTo(tip.x, tip.y); ctx.lineTo(br.x, br.y);
+  ctx.closePath();
+  ctx.fillStyle = "#c8281e";
+  ctx.fill();
+  ctx.restore();
+
+  // 中心圆
+  var grad = ctx.createRadialGradient(cx, cy, center_r*0.2, cx, cy, center_r);
+  grad.addColorStop(0, "#5a5c62"); grad.addColorStop(1, "#2a2c30");
+  ctx.beginPath();
+  ctx.arc(cx, cy, center_r, 0, Math.PI*2);
+  ctx.fillStyle = grad; ctx.fill();
+  ctx.lineWidth = 3; ctx.strokeStyle = "#1a1c20"; ctx.stroke();
+
+  ctx.shadowColor = "transparent"; ctx.shadowBlur = 0;
+  ctx.fillStyle = "#1a1c20";
+  ctx.font = "bold " + Math.round(expSize*0.052) + "px 'Consolas','Microsoft YaHei',monospace";
+  ctx.textAlign = "center";
+  ctx.fillText(val.toFixed(2), cx, cy + center_r + expSize*0.08);
+  if (title) {
+    ctx.fillStyle = "#808288";
+    ctx.font = Math.round(expSize*0.022) + "px 'Microsoft YaHei','微软雅黑',sans-serif";
+    ctx.fillText(title, cx, cy + center_r + expSize*0.14);
+  }
+
+  var link = document.createElement("a");
+  link.download = "meter.png";
+  link.href = expCanvas.toDataURL("image/png");
+  link.click();
+}
+
+draw();
+</script>
+</body>
+</html>
