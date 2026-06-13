@@ -168,7 +168,7 @@ function draw() {
   var R_inner = 218 * s;
   var R_major_tick = 245 * s;
   var R_label = 200 * s;
-  var R_needle = 222 * s;
+  var R_needle = 232 * s;
   var center_r = 14 * s;
 
   // ── 外圈金属边框 ────────────────────────────────────────
@@ -228,8 +228,8 @@ function draw() {
 
   // ── 指针（钝头宽针，提升 tip 检测率）───────────────
   var nAng = valueToAngle(val, minV, maxV);
-  var bw = 12 * s;  // 基部宽度
-  var tipW = 6 * s;  // 尖端宽度（像素），不为0则钝头
+  var bw = 8 * s;   // 基部宽度
+  var tipW = 3 * s;  // 尖端宽度，不为0则钝头
   var tipR = R_needle;
   var rad = nAng * Math.PI / 180;
   var perpX = Math.cos(rad + Math.PI / 2) * tipW / 2;
@@ -308,7 +308,7 @@ function exportPNG() {
   var R_inner = expSize * 0.305;
   var R_major = expSize * 0.33;
   var R_label = expSize * 0.275;
-  var R_needle = expSize * 0.30;
+  var R_needle = expSize * 0.31;
   var center_r = expSize * 0.020;
 
   // 白底 + 金属外圈
@@ -377,8 +377,8 @@ function exportPNG() {
 
   // 指针（钝头宽针）
   var nAng = valueToAngle(val, minV, maxV);
-  var eBw = expSize * 0.016;
-  var tipW = expSize * 0.008;
+  var eBw = expSize * 0.011;
+  var tipW = expSize * 0.004;
   var tipR = R_needle;
   var rad = nAng * Math.PI / 180;
   var perpX = Math.cos(rad + Math.PI / 2) * tipW / 2;
