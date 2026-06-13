@@ -229,7 +229,7 @@ function draw() {
   // ── 指针（钝头宽针，提升 tip 检测率）───────────────
   var nAng = valueToAngle(val, minV, maxV);
   var bw = 12 * s;  // 基部宽度
-  var tipA = 20;     // 钝头半角（度）
+  var tipA = 8;      // 钝头半角（度），越小尖端越宽
   var tipR = R_needle;
   var tipL = polarXY(cx, cy, tipR, nAng + tipA);
   var tipR2 = polarXY(cx, cy, tipR, nAng - tipA);
@@ -241,7 +241,7 @@ function draw() {
   ctx.moveTo(tailC.x, tailC.y);
   ctx.lineTo(baseL.x, baseL.y);
   ctx.lineTo(tipL.x, tipL.y);
-  ctx.arc(cx, cy, tipR, (nAng + tipA) * Math.PI / 180, (nAng - tipA) * Math.PI / 180, true);
+  ctx.lineTo(tipR2.x, tipR2.y);
   ctx.lineTo(baseR.x, baseR.y);
   ctx.closePath();
   ctx.fillStyle = "#1a1c20";
@@ -374,8 +374,9 @@ function exportPNG() {
   // 指针（钝头宽针）
   var nAng = valueToAngle(val, minV, maxV);
   var eBw = expSize * 0.016;
-  var tipA = 20;
+  var tipA = 8;
   var tipL = polarXY(cx, cy, R_needle, nAng + tipA);
+  var tipR2 = polarXY(cx, cy, R_needle, nAng - tipA);
   var tailC = polarXY(cx, cy, R_needle * 0.15, nAng + 180);
   var baseL = polarXY(cx, cy, eBw, nAng + 100);
   var baseR = polarXY(cx, cy, eBw, nAng - 100);
@@ -383,7 +384,7 @@ function exportPNG() {
   ctx.moveTo(tailC.x, tailC.y);
   ctx.lineTo(baseL.x, baseL.y);
   ctx.lineTo(tipL.x, tipL.y);
-  ctx.arc(cx, cy, R_needle, (nAng + tipA) * Math.PI / 180, (nAng - tipA) * Math.PI / 180, true);
+  ctx.lineTo(tipR2.x, tipR2.y);
   ctx.lineTo(baseR.x, baseR.y);
   ctx.closePath();
   ctx.fillStyle = "#1a1c20";
