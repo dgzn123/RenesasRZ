@@ -203,6 +203,7 @@ function draw() {
   for (var i = 0; i <= divs; i++) {
     var lblVal = minV + (maxV - minV) * i / divs;
     if (Math.abs(lblVal - Math.round(lblVal)) > 1e-9) continue;
+    if (i === 0 || i === divs) continue;  // 端点已有大字
     var ang = valueToAngle(lblVal, minV, maxV);
     var p = polarXY(cx, cy, R_label, ang);
     ctx.fillText(formatNum(Math.round(lblVal)), p.x, p.y);
@@ -237,6 +238,15 @@ function draw() {
   ctx.fill();
   ctx.lineWidth = 2.5; ctx.strokeStyle = "#1a1c20";
   ctx.stroke();
+
+  // ── 量程端点（大字）─────────────────────────────────────
+  ctx.fillStyle = "#1a1c20";
+  ctx.font = "bold 30px 'Consolas','Microsoft YaHei',monospace";
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText(formatNum(minV), polarXY(cx, cy, R_label + 14, ARC_START).x,
+                              polarXY(cx, cy, R_label + 14, ARC_START).y);
+  ctx.fillText(formatNum(maxV), polarXY(cx, cy, R_label + 14, ARC_START + ARC_SWEEP).x,
+                              polarXY(cx, cy, R_label + 14, ARC_START + ARC_SWEEP).y);
 
   // ── 当前值 → HTML ──────────────────────────────────────
   document.getElementById("meterValue").textContent = val.toFixed(2);
