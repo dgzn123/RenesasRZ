@@ -256,10 +256,6 @@ function draw() {
   ctx.arc(cx, cy, center_r, 0, Math.PI * 2);
   ctx.fillStyle = "#1a1c20";
   ctx.fill();
-  ctx.beginPath();
-  ctx.arc(cx, cy, center_r * 0.55, 0, Math.PI * 2);
-  ctx.fillStyle = "#4a4c52";
-  ctx.fill();
 
   // ── 量程端点（大字，弧缺口外侧）─────────────────────────
   ctx.fillStyle = "#1a1c20";
@@ -406,10 +402,6 @@ function exportPNG() {
   ctx.beginPath();
   ctx.arc(cx, cy, center_r, 0, Math.PI * 2);
   ctx.fillStyle = "#1a1c20";
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(cx, cy, center_r * 0.55, 0, Math.PI * 2);
-  ctx.fillStyle = "#4a4c52";
   ctx.fill();
 
   ctx.fillStyle = "#1a1c20";
