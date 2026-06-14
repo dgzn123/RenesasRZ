@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>仪表生成器 — Meter Generator</title>
+<style>
+  :root {
+    --primary: #002FA7;
+    --bg: #F1F2F5;
+    --panel: #FFFFFF;
+    --text: #1a1c20;
+    --text2: #6b7280;
+    --border: #e5e7eb;
+    --radius: 10px;
+    --shadow: 0 2px 12px rgba(0,0,0,0.08);
+    --danger: #c8281e;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "Microsoft YaHei", "微软雅黑", "Segoe UI", sans-serif;
+    background: var(--bg); display: flex;
+    justify-content: center; align-items: flex-start;
+    height: 100vh; padding: 12px; gap: 18px;
+    overflow: hidden;
+  }
+
+  /* ── 控制面板 ──────────────────────────────── */
+  .controls {
+    background: var(--panel); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 20px 18px;
+    width: 240px; display: flex; flex-direction: column; gap: 10px;
+    flex-shrink: 0;
+  }
+  .controls h2 {
+    font-size: 1.15rem; font-weight: 700; color: var(--primary);
+    letter-spacing: 1px; margin-bottom: 4px;
+  }
+  .field { display: flex; flex-direction: column; gap: 3px; }
+  .field label {
+    font-size: 0.8rem; font-weight: 600; color: var(--text2);
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .field input {
+    padding: 8px 10px; border: 1px solid var(--border);
+    border-radius: 6px; font-size: 0.95rem; font-family: "Consolas", monospace;
+    outline: none; transition: border 0.2s;
+  }
+  .field input:focus { border-color: var(--primary); }
+
+  .btn {
+    padding: 10px 0; border: none; border-radius: 6px;
+    font-size: 0.95rem; font-weight: 700; cursor: pointer;
+    letter-spacing: 1px; transition: opacity 0.2s;
+  }
+  .btn.export {
+    background: var(--primary); color: #fff;
+    box-shadow: 0 2px 6px rgba(0,47,167,0.25);
+  }
+  .btn.export:hover { opacity: 0.88; }
+
+  /* ── 仪表面板 ──────────────────────────────── */
+  .meter-panel {
+    background: var(--panel); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 18px;
+    display: flex; flex-direction: column; align-items: center;
+    flex: 1; max-height: calc(100vh - 24px);
+  }
+  .meter-panel canvas { display: block; }
+  .meter-panel .info {
+    margin-top: 8px; font-size: 0.78rem; color: var(--text2);
+  }
+</style>
+</head>
+<body>
+
+<div class="controls">
+  <h2>仪表参数</h2>
+  <div class="field">
+    <label>最小值</label>
+    <input type="number" id="inMin" value="0" step="any" oninput="draw()">
+  </div>
+  <div class="field">
+    <label>最大值</label>
+    <input type="number" id="inMax" value="25" step="any" oninput="draw()">
+  </div>
+  <div class="field">
+    <label>分度数</label>
+    <input type="number" id="inDivs" value="50" step="1" min="1" oninput="draw()">
+  </div>
+  <div class="field">
+    <label>区间跨度</label>
+    <input type="number" id="inMinor" value="10" step="1" min="1" oninput="draw()">
+  </div>
+  <div class="field">
+    <label>当前值</label>
+    <input type="number" id="inValue" value="5.95" step="any" oninput="draw()">
+  </div>
+  <div class="field">
+    <label>标题（可选）</label>
+    <input type="text" id="inTitle" value="" placeholder="如: 压力表" oninput="draw()">
+  </div>
+  <hr style="border:none;border-top:1px solid var(--border);margin:4px 0;">
+  <h2 style="font-size:1rem;">平滑动画</h2>
+  <div class="field">
+    <label>起始值</label>
+    <input type="number" id="inFrom" value="0" step="any" oninput="draw()" style="font-size:1.3rem;font-weight:700;">
+  </div>
+  <div class="field">
+    <label>结束值</label>
+    <input type="number" id="inTo" value="25" step="any" oninput="draw()" style="font-size:1.3rem;font-weight:700;">
+  </div>
+  <div class="field">
+    <label>持续时间 (秒)</label>
+    <input type="number" id="inDur" value="3" step="0.5" min="0.5" max="30" oninput="draw()">
+  </div>
+  <div style="display:flex;gap:8px;">
+    <button class="btn export" style="flex:1;" id="btnPlay" onclick="toggleAnim()">播放</button>
+    <button class="btn" style="flex:1;background:#e5e7eb;color:#333;" onclick="stopAnim()">重置</button>
+  </div>
+  <label style="display:flex;align-items:center;gap:8px;margin-top:4px;cursor:pointer;font-size:0.85rem;color:var(--text2);">
+    <input type="checkbox" id="inRealistic" onchange="draw()" style="width:16px;height:16px;cursor:pointer;">
+    真实感预览（噪声+模糊+暗角）
+  </label>
+  <button class="btn export" onclick="exportPNG()" style="margin-top:8px;">导出 PNG</button>
+</div>
+
+<div class="meter-panel">
+  <canvas id="meterCanvas"></canvas>
+  <div id="meterValue" style="font-size:42px;font-weight:700;font-family:'Courier New','Microsoft YaHei',monospace;color:#1a1c20;margin-top:10px;">5.95</div>
+  <div class="info">刻度 <span id="infoRange">0 ~ 25</span> &nbsp;|&nbsp; 分度 <span id="infoDivs">50</span></div>
+</div>
+
+<script>
+// ─── 常量 ─────────────────────────────────────────────────
+var ARC_START = 135;   // 左下 7:30（Canvas CW: 0=右 90=下）
+var ARC_SWEEP = 270;   // 顺时针跨过顶部到右下 4:30，缺口在底部 6:00
+var canvas = document.getElementById("meterCanvas");
+
+function valueToAngle(val, minV, maxV) {
+  var frac = (val - minV) / (maxV - minV);
+  frac = Math.max(0, Math.min(1, frac));
+  return ARC_START + frac * ARC_SWEEP;
+}
+
+function polarXY(cx, cy, r, deg) {
+  var rad = deg * Math.PI / 180;
+  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+}
+
+function draw() {
+  var SIZE = Math.min(window.innerWidth - 300, window.innerHeight - 60, 800);
+  canvas.width = SIZE; canvas.height = SIZE;
+  var ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, SIZE, SIZE);
+
+  var minV = parseFloat(document.getElementById("inMin").value) || 0;
+  var maxV = parseFloat(document.getElementById("inMax").value) || 25;
+  var divs = parseInt(document.getElementById("inDivs").value) || 50;
+  var minor = parseInt(document.getElementById("inMinor").value) || 10;
+  if (minor < 1) minor = 1;
+  var val  = parseFloat(document.getElementById("inValue").value) || 0;
+  var title = document.getElementById("inTitle").value.trim();
+  if (minV >= maxV || divs < 1) return;
+
+  document.getElementById("infoRange").textContent = minV + " ~ " + maxV;
+  document.getElementById("infoDivs").textContent = divs;
+
+  var cx = SIZE / 2, cy = SIZE / 2;
+  var s = SIZE / 620;  // 比例因子
+  var R_outer = 285 * s;
+  var R_inner = 218 * s;
+  var R_major_tick = 245 * s;
+  var R_label = 200 * s;
+  var R_needle = 232 * s;
+  var center_r = 14 * s;
+
+  // ── 外圈边框 ────────────────────────────────────────
+  var Rim = 310 * s;
+  var metalW = 6 * s, whiteW = 16 * s;
+  // 金属外圈
+  ctx.beginPath();
+  ctx.arc(cx, cy, Rim, 0, Math.PI * 2);
+  ctx.fillStyle = "#3a3c42";
+  ctx.fill();
+  // 白色内圈（用户加粗的目标）
+  ctx.beginPath();
+  ctx.arc(cx, cy, Rim - metalW, 0, Math.PI * 2);
+  ctx.fillStyle = "#ffffff";
+  ctx.fill();
+  // 表盘底色
+  ctx.beginPath();
+  ctx.arc(cx, cy, Rim - metalW - whiteW, 0, Math.PI * 2);
+  ctx.fillStyle = "#f5f5f5";
+  ctx.fill();
+
+  // ── 弧带 ────────────────────────────────────────────────
+  function drawSegArc(r, w, color) {
+    var segs = [[135, 225], [225, 315], [315, 45]];
+    ctx.beginPath();
+    segs.forEach(function(seg) {
+      ctx.arc(cx, cy, r, seg[0] * Math.PI / 180, seg[1] * Math.PI / 180);
+    });
+    ctx.lineWidth = w; ctx.strokeStyle = color; ctx.stroke();
+  }
+  // 弧带边界
+  drawSegArc(R_outer, 2.5 * s, "#1a1c20");
+
+  // ── 刻度线（区间边界粗长 + 标签，普通刻度细短无标签）─
+  var R_major = R_major_tick;
+  var R_normal = (R_major_tick + R_outer) / 2;  // 普通刻度较短
+  for (var i = 0; i <= divs; i++) {
+    var frac = i / divs;
+    var ang = ARC_START + frac * ARC_SWEEP;
+    var isBoundary = (i % minor === 0);
+    var rEnd = isBoundary ? R_major : R_normal;
+    var p1 = polarXY(cx, cy, R_outer, ang);
+    var p2 = polarXY(cx, cy, rEnd, ang);
+    ctx.beginPath();
+    ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y);
+    ctx.lineWidth = (isBoundary ? 3 : 0.6) * s;
+    ctx.strokeStyle = "#1a1c20";
+    ctx.stroke();
+  }
+
+  // ── 区间数字标签（与端点同字号）───────────────────────
+  ctx.fillStyle = "#1a1c20";
+  ctx.font = "bold " + Math.round(52 * s) + "px 'Courier New','Microsoft YaHei',monospace";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  for (var i = 0; i <= divs; i++) {
+    if (i % minor !== 0) continue;
+    if (i === 0 || i === divs) continue;
+    var lblVal = minV + (maxV - minV) * i / divs;
+    var ang = valueToAngle(lblVal, minV, maxV);
+    var p = polarXY(cx, cy, R_label - 8 * s, ang);
+    ctx.fillText(formatNum(Math.round(lblVal)), p.x, p.y);
+  }
+
+  // ── 量程端点（大字，弧缺口外侧）────── 画在指针之前 ────
+  ctx.fillStyle = "#1a1c20";
+  ctx.font = "bold " + Math.round(52 * s) + "px 'Courier New','Microsoft YaHei',monospace";
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  var endR = R_inner - 30 * s;
+  ctx.fillText(formatNum(minV), polarXY(cx, cy, endR, ARC_START).x,
+                              polarXY(cx, cy, endR, ARC_START).y);
+  ctx.fillText(formatNum(maxV), polarXY(cx, cy, endR, ARC_START + ARC_SWEEP).x,
+                              polarXY(cx, cy, endR, ARC_START + ARC_SWEEP).y);
+
+  // ── 指针（钝头宽针，提升 tip 检测率）───────────────
+  var nAng = valueToAngle(val, minV, maxV);
+  var bw = 8 * s;   // 基部宽度
+  var tipW = 3 * s;  // 尖端宽度，不为0则钝头
+  var tipR = R_needle;
+  var rad = nAng * Math.PI / 180;
+  var perpX = Math.cos(rad + Math.PI / 2) * tipW / 2;
+  var perpY = Math.sin(rad + Math.PI / 2) * tipW / 2;
+  var tipC = polarXY(cx, cy, tipR, nAng);
+  var tipL = { x: tipC.x + perpX, y: tipC.y + perpY };
+  var tipR2= { x: tipC.x - perpX, y: tipC.y - perpY };
+  var tailR = R_needle * 0.15;
+  var tailC = polarXY(cx, cy, tailR, nAng + 180);
+  var baseL = polarXY(cx, cy, bw, nAng + 100);
+  var baseR = polarXY(cx, cy, bw, nAng - 100);
+  ctx.beginPath();
+  ctx.moveTo(tailC.x, tailC.y);
+  ctx.lineTo(baseL.x, baseL.y);
+  ctx.lineTo(tipL.x, tipL.y);
+  ctx.lineTo(tipR2.x, tipR2.y);
+  ctx.lineTo(baseR.x, baseR.y);
+  ctx.closePath();
+  ctx.fillStyle = "#c8281e";
+  ctx.fill();
+
+  // ── 中心圆 ────────────────────────────────────────────
+  ctx.beginPath();
+  ctx.arc(cx, cy, center_r, 0, Math.PI * 2);
+  ctx.fillStyle = "#c8281e";
+  ctx.fill();
+
+  // ── 真实感后处理（预览）─────────────────────────────────
+  if (document.getElementById("inRealistic").checked) {
+    applyRealistic(ctx, SIZE, SIZE);
+  }
+
+  // ── 当前值 → HTML ──────────────────────────────────────
+  document.getElementById("meterValue").textContent = val.toFixed(2);
+
+  // ── 标题 ──────────────────────────────────────────────
+  if (title) {
+    ctx.fillStyle = "#808288";
+    ctx.font = "13px 'Microsoft YaHei','微软雅黑',sans-serif";
+    ctx.fillText(title, cx, cy + center_r + 78);
+  }
+}
+
+function formatNum(n) {
+  if (Number.isInteger(n)) return n.toString();
+  var abs = Math.abs(n);
+  if (abs >= 100) return n.toFixed(0);
+  if (abs >= 10) return n.toFixed(1);
+  if (abs >= 1) return n.toFixed(2);
+  return n.toFixed(3);
+}
+
+// ── 导出 PNG ─────────────────────────────────────────────
+// ── 真实感后处理（噪声+暗角+模糊）─────────────────────
+function applyRealistic(ctx, w, h) {
+  var idata = ctx.getImageData(0, 0, w, h);
+  var d = idata.data;
+  var cx2 = w / 2, cy2 = h / 2, maxR = w * 0.48;
+
+  for (var y = 0; y < h; y++) {
+    for (var x = 0; x < w; x++) {
+      var i = (y * w + x) * 4;
+      var noise = (Math.random() - 0.5) * 24;
+      d[i]   = Math.min(255, Math.max(0, d[i]   + noise));
+      d[i+1] = Math.min(255, Math.max(0, d[i+1] + noise));
+      d[i+2] = Math.min(255, Math.max(0, d[i+2] + noise));
+      var dx = x - cx2, dy = y - cy2;
+      var dist = Math.sqrt(dx * dx + dy * dy);
+      var vignette = dist / maxR;
+      if (vignette > 0.55) {
+        var v = (vignette - 0.55) / 0.45;
+        v = Math.min(1, v * v * 0.5);
+        d[i]   = Math.round(d[i]   * (1 - v));
+        d[i+1] = Math.round(d[i+1] * (1 - v));
+        d[i+2] = Math.round(d[i+2] * (1 - v));
+      }
+    }
+  }
+
+  for (var pass = 0; pass < 2; pass++) {
+    var src = new Uint8ClampedArray(d);
+    for (var y = 1; y < h - 1; y++) {
+      for (var x = 1; x < w - 1; x++) {
+        var idx = (y * w + x) * 4;
+        for (var c = 0; c < 3; c++) {
+          var sum = 0;
+          for (var dy = -1; dy <= 1; dy++)
+            for (var dx = -1; dx <= 1; dx++)
+              sum += src[((y + dy) * w + (x + dx)) * 4 + c];
+          d[idx + c] = Math.round(sum / 9);
+        }
+      }
+    }
+  }
+
+  ctx.putImageData(idata, 0, 0);
+}
+
+
+function exportPNG() {
+  // 生成大尺寸导出
+  var expSize = 1200;
+  var expCanvas = document.createElement("canvas");
+  expCanvas.width = expSize; expCanvas.height = expSize;
+  var ctx = expCanvas.getContext("2d");
+
+  var minV = parseFloat(document.getElementById("inMin").value) || 0;
+  var maxV = parseFloat(document.getElementById("inMax").value) || 25;
+  var divs = parseInt(document.getElementById("inDivs").value) || 50;
+  var minor = parseInt(document.getElementById("inMinor").value) || 10;
+  if (minor < 1) minor = 1;
+  var val  = parseFloat(document.getElementById("inValue").value) || 0;
+  var title = document.getElementById("inTitle").value.trim();
+
+  var cx = expSize / 2, cy = expSize / 2;
+  var R_outer = expSize * 0.40;
+  var R_inner = expSize * 0.305;
+  var R_major = expSize * 0.33;
+  var R_label = expSize * 0.275;
+  var R_needle = expSize * 0.31;
+  var center_r = expSize * 0.020;
+
+  // 白底 + 外圈边框
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, expSize, expSize);
+  var Rim = expSize * 0.435;
+  var metalW = expSize * 0.007, whiteW = expSize * 0.020;
+  // 金属外圈
+  ctx.beginPath();
+  ctx.arc(cx, cy, Rim, 0, Math.PI * 2);
+  ctx.fillStyle = "#3a3c42";
+  ctx.fill();
+  // 白色内圈
+  ctx.beginPath();
+  ctx.arc(cx, cy, Rim - metalW, 0, Math.PI * 2);
+  ctx.fillStyle = "#ffffff";
+  ctx.fill();
+  // 表盘底色
+  ctx.beginPath();
+  ctx.arc(cx, cy, Rim - metalW - whiteW, 0, Math.PI * 2);
+  ctx.fillStyle = "#f5f5f5";
+  ctx.fill();
+
+  // 弧带
+  function drawSegArcExp(r, w, color) {
+    var segs = [[135, 225], [225, 315], [315, 45]];
+    ctx.beginPath();
+    segs.forEach(function(s) {
+      ctx.arc(cx, cy, r, s[0] * Math.PI / 180, s[1] * Math.PI / 180);
+    });
+    ctx.lineWidth = w; ctx.strokeStyle = color; ctx.stroke();
+  }
+  drawSegArcExp(R_outer, 3, "#1a1c20");
+
+  // 刻度（区间边界粗长 + 标签）
+  var eR_major = R_major;
+  var eR_normal = (R_major + R_outer) / 2;
+  for (var i = 0; i <= divs; i++) {
+    var frac = i / divs;
+    var ang = ARC_START + frac * ARC_SWEEP;
+    var isBoundary = (i % minor === 0);
+    var rEnd = isBoundary ? eR_major : eR_normal;
+    var p1 = polarXY(cx, cy, R_outer, ang);
+    var p2 = polarXY(cx, cy, rEnd, ang);
+    ctx.beginPath();
+    ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y);
+    ctx.lineWidth = isBoundary ? 3 : 1;
+    ctx.strokeStyle = "#1a1c20";
+    ctx.stroke();
+  }
+
+  // 区间标签（与端点同字号）
+  ctx.fillStyle = "#1a1c20";
+  ctx.font = "bold " + Math.round(expSize * 0.052) + "px 'Courier New','Microsoft YaHei',monospace";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  for (var i = 0; i <= divs; i++) {
+    if (i % minor !== 0) continue;
+    if (i === 0 || i === divs) continue;
+    var lblVal = minV + (maxV - minV) * i / divs;
+    var ang = valueToAngle(lblVal, minV, maxV);
+    var p = polarXY(cx, cy, R_label - expSize * 0.01, ang);
+    ctx.fillText(formatNum(Math.round(lblVal)), p.x, p.y);
+  }
+
+  // 端点大字
+  ctx.font = "bold " + Math.round(expSize * 0.052) + "px 'Courier New','Microsoft YaHei',monospace";
+  var endR = R_inner - expSize * 0.038;
+  ctx.fillText(formatNum(minV), polarXY(cx, cy, endR, ARC_START).x,
+                              polarXY(cx, cy, endR, ARC_START).y);
+  ctx.fillText(formatNum(maxV), polarXY(cx, cy, endR, ARC_START + ARC_SWEEP).x,
+                              polarXY(cx, cy, endR, ARC_START + ARC_SWEEP).y);
+
+  // 指针（钝头宽针）
+  var nAng = valueToAngle(val, minV, maxV);
+  var eBw = expSize * 0.011;
+  var tipW = expSize * 0.004;
+  var tipR = R_needle;
+  var rad = nAng * Math.PI / 180;
+  var perpX = Math.cos(rad + Math.PI / 2) * tipW / 2;
+  var perpY = Math.sin(rad + Math.PI / 2) * tipW / 2;
+  var tipC = polarXY(cx, cy, tipR, nAng);
+  var tipL = { x: tipC.x + perpX, y: tipC.y + perpY };
+  var tipR2= { x: tipC.x - perpX, y: tipC.y - perpY };
+  var tailC = polarXY(cx, cy, R_needle * 0.15, nAng + 180);
+  var baseL = polarXY(cx, cy, eBw, nAng + 100);
+  var baseR = polarXY(cx, cy, eBw, nAng - 100);
+  ctx.beginPath();
+  ctx.moveTo(tailC.x, tailC.y);
+  ctx.lineTo(baseL.x, baseL.y);
+  ctx.lineTo(tipL.x, tipL.y);
+  ctx.lineTo(tipR2.x, tipR2.y);
+  ctx.lineTo(baseR.x, baseR.y);
+  ctx.closePath();
+  ctx.fillStyle = "#c8281e";
+  ctx.fill();
+
+  // 中心圆
+  ctx.beginPath();
+  ctx.arc(cx, cy, center_r, 0, Math.PI * 2);
+  ctx.fillStyle = "#c8281e";
+  ctx.fill();
+
+  ctx.fillStyle = "#1a1c20";
+  ctx.font = "bold " + Math.round(expSize*0.052) + "px 'Courier New','Microsoft YaHei',monospace";
+  ctx.textAlign = "center";
+  ctx.fillText(val.toFixed(2), cx, cy + center_r + expSize*0.08);
+  if (title) {
+    ctx.fillStyle = "#808288";
+    ctx.font = Math.round(expSize*0.022) + "px 'Microsoft YaHei','微软雅黑',sans-serif";
+    ctx.fillText(title, cx, cy + center_r + expSize*0.14);
+  }
+
+  applyRealistic(ctx, expSize, expSize);
+
+  var link = document.createElement("a");
+  link.download = "meter.png";
+  link.href = expCanvas.toDataURL("image/png");
+  link.click();
+}
+
+// ── 平滑动画 ─────────────────────────────────────────────
+var animId = null;
+var animStartT = 0;
+var animFrom = 0;
+var animTo = 0;
+var animDur = 3;
+
+function toggleAnim() {
+  if (animId) { stopAnim(); return; }
+  var from = parseFloat(document.getElementById("inFrom").value);
+  var to   = parseFloat(document.getElementById("inTo").value);
+  var dur  = parseFloat(document.getElementById("inDur").value) || 3;
+  if (isNaN(from) || isNaN(to) || from === to) return;
+  animFrom = from; animTo = to; animDur = dur * 1000;
+  animStartT = performance.now();
+  document.getElementById("btnPlay").textContent = "播放中…";
+  animId = requestAnimationFrame(animate);
+}
+
+function stopAnim() {
+  if (animId) { cancelAnimationFrame(animId); animId = null; }
+  document.getElementById("btnPlay").textContent = "播放";
+  document.getElementById("inValue").value = animFrom;
+  draw();
+}
+
+function animate(now) {
+  var elapsed = now - animStartT;
+  var t = Math.min(elapsed / animDur, 1.0);
+  t = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+  var v = animFrom + (animTo - animFrom) * t;
+  document.getElementById("inValue").value = v.toFixed(4);
+  draw();
+  if (t < 1) {
+    animId = requestAnimationFrame(animate);
+  } else {
+    animId = null;
+    document.getElementById("btnPlay").textContent = "播放";
+  }
+}
+
+draw();
+</script>
+</body>
+</html>
