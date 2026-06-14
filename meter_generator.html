@@ -175,16 +175,23 @@ function draw() {
   var R_needle = 232 * s;
   var center_r = 14 * s;
 
-  // ── 外圈金属边框 ────────────────────────────────────────
-  var Rim = 310 * s;  // 边框绝对位置，不随表盘缩放
-  var bezelW = 14 * s;  // 边框厚度
+  // ── 外圈边框 ────────────────────────────────────────
+  var Rim = 310 * s;
+  var metalW = 6 * s, whiteW = 16 * s;
+  // 金属外圈
   ctx.beginPath();
   ctx.arc(cx, cy, Rim, 0, Math.PI * 2);
   ctx.fillStyle = "#3a3c42";
   ctx.fill();
+  // 白色内圈（用户加粗的目标）
   ctx.beginPath();
-  ctx.arc(cx, cy, Rim - bezelW, 0, Math.PI * 2);
+  ctx.arc(cx, cy, Rim - metalW, 0, Math.PI * 2);
   ctx.fillStyle = "#ffffff";
+  ctx.fill();
+  // 表盘底色
+  ctx.beginPath();
+  ctx.arc(cx, cy, Rim - metalW - whiteW, 0, Math.PI * 2);
+  ctx.fillStyle = "#f5f5f5";
   ctx.fill();
 
   // ── 弧带 ────────────────────────────────────────────────
@@ -230,6 +237,16 @@ function draw() {
     ctx.fillText(formatNum(Math.round(lblVal)), p.x, p.y);
   }
 
+  // ── 量程端点（大字，弧缺口外侧）────── 画在指针之前 ────
+  ctx.fillStyle = "#1a1c20";
+  ctx.font = "bold " + Math.round(52 * s) + "px 'Courier New','Microsoft YaHei',monospace";
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  var endR = R_inner - 30 * s;
+  ctx.fillText(formatNum(minV), polarXY(cx, cy, endR, ARC_START).x,
+                              polarXY(cx, cy, endR, ARC_START).y);
+  ctx.fillText(formatNum(maxV), polarXY(cx, cy, endR, ARC_START + ARC_SWEEP).x,
+                              polarXY(cx, cy, endR, ARC_START + ARC_SWEEP).y);
+
   // ── 指针（钝头宽针，提升 tip 检测率）───────────────
   var nAng = valueToAngle(val, minV, maxV);
   var bw = 8 * s;   // 基部宽度
@@ -260,16 +277,6 @@ function draw() {
   ctx.arc(cx, cy, center_r, 0, Math.PI * 2);
   ctx.fillStyle = "#c8281e";
   ctx.fill();
-
-  // ── 量程端点（大字，弧缺口外侧）─────────────────────────
-  ctx.fillStyle = "#1a1c20";
-  ctx.font = "bold " + Math.round(52 * s) + "px 'Courier New','Microsoft YaHei',monospace";
-  ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  var endR = R_inner - 30 * s;
-  ctx.fillText(formatNum(minV), polarXY(cx, cy, endR, ARC_START).x,
-                              polarXY(cx, cy, endR, ARC_START).y);
-  ctx.fillText(formatNum(maxV), polarXY(cx, cy, endR, ARC_START + ARC_SWEEP).x,
-                              polarXY(cx, cy, endR, ARC_START + ARC_SWEEP).y);
 
   // ── 真实感后处理（预览）─────────────────────────────────
   if (document.getElementById("inRealistic").checked) {
@@ -366,18 +373,25 @@ function exportPNG() {
   var R_needle = expSize * 0.31;
   var center_r = expSize * 0.020;
 
-  // 白底 + 金属外圈
+  // 白底 + 外圈边框
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, expSize, expSize);
-  var Rim = expSize * 0.435;  // 边框绝对位置
-  var bezelW = expSize * 0.016;  // 边框厚度
+  var Rim = expSize * 0.435;
+  var metalW = expSize * 0.007, whiteW = expSize * 0.020;
+  // 金属外圈
   ctx.beginPath();
   ctx.arc(cx, cy, Rim, 0, Math.PI * 2);
   ctx.fillStyle = "#3a3c42";
   ctx.fill();
+  // 白色内圈
   ctx.beginPath();
-  ctx.arc(cx, cy, Rim - bezelW, 0, Math.PI * 2);
+  ctx.arc(cx, cy, Rim - metalW, 0, Math.PI * 2);
   ctx.fillStyle = "#ffffff";
+  ctx.fill();
+  // 表盘底色
+  ctx.beginPath();
+  ctx.arc(cx, cy, Rim - metalW - whiteW, 0, Math.PI * 2);
+  ctx.fillStyle = "#f5f5f5";
   ctx.fill();
 
   // 弧带
