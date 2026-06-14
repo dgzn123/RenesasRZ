@@ -127,7 +127,7 @@
 
 <div class="meter-panel">
   <canvas id="meterCanvas"></canvas>
-  <div id="meterValue" style="font-size:42px;font-weight:700;font-family:'Consolas','Microsoft YaHei',monospace;color:#1a1c20;margin-top:10px;">5.95</div>
+  <div id="meterValue" style="font-size:42px;font-weight:700;font-family:'Courier New','Microsoft YaHei',monospace;color:#1a1c20;margin-top:10px;">5.95</div>
   <div class="info">刻度 <span id="infoRange">0 ~ 25</span> &nbsp;|&nbsp; 分度 <span id="infoDivs">50</span></div>
 </div>
 
@@ -177,7 +177,7 @@ function draw() {
 
   // ── 外圈金属边框 ────────────────────────────────────────
   var Rim = 310 * s;  // 边框绝对位置，不随表盘缩放
-  var bezelW = 6 * s;  // 边框厚度
+  var bezelW = 14 * s;  // 边框厚度
   ctx.beginPath();
   ctx.arc(cx, cy, Rim, 0, Math.PI * 2);
   ctx.fillStyle = "#3a3c42";
@@ -218,7 +218,7 @@ function draw() {
 
   // ── 区间数字标签（与端点同字号）───────────────────────
   ctx.fillStyle = "#1a1c20";
-  ctx.font = "bold " + Math.round(52 * s) + "px 'Consolas','Microsoft YaHei',monospace";
+  ctx.font = "bold " + Math.round(52 * s) + "px 'Courier New','Microsoft YaHei',monospace";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   for (var i = 0; i <= divs; i++) {
@@ -252,18 +252,18 @@ function draw() {
   ctx.lineTo(tipR2.x, tipR2.y);
   ctx.lineTo(baseR.x, baseR.y);
   ctx.closePath();
-  ctx.fillStyle = "#1a1c20";
+  ctx.fillStyle = "#c8281e";
   ctx.fill();
 
   // ── 中心圆 ────────────────────────────────────────────
   ctx.beginPath();
   ctx.arc(cx, cy, center_r, 0, Math.PI * 2);
-  ctx.fillStyle = "#1a1c20";
+  ctx.fillStyle = "#c8281e";
   ctx.fill();
 
   // ── 量程端点（大字，弧缺口外侧）─────────────────────────
   ctx.fillStyle = "#1a1c20";
-  ctx.font = "bold " + Math.round(52 * s) + "px 'Consolas','Microsoft YaHei',monospace";
+  ctx.font = "bold " + Math.round(52 * s) + "px 'Courier New','Microsoft YaHei',monospace";
   ctx.textAlign = "center"; ctx.textBaseline = "middle";
   var endR = R_inner - 30 * s;
   ctx.fillText(formatNum(minV), polarXY(cx, cy, endR, ARC_START).x,
@@ -370,7 +370,7 @@ function exportPNG() {
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, expSize, expSize);
   var Rim = expSize * 0.435;  // 边框绝对位置
-  var bezelW = expSize * 0.008;  // 边框厚度
+  var bezelW = expSize * 0.016;  // 边框厚度
   ctx.beginPath();
   ctx.arc(cx, cy, Rim, 0, Math.PI * 2);
   ctx.fillStyle = "#3a3c42";
@@ -410,7 +410,7 @@ function exportPNG() {
 
   // 区间标签（与端点同字号）
   ctx.fillStyle = "#1a1c20";
-  ctx.font = "bold " + Math.round(expSize * 0.052) + "px 'Consolas','Microsoft YaHei',monospace";
+  ctx.font = "bold " + Math.round(expSize * 0.052) + "px 'Courier New','Microsoft YaHei',monospace";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   for (var i = 0; i <= divs; i++) {
@@ -423,7 +423,7 @@ function exportPNG() {
   }
 
   // 端点大字
-  ctx.font = "bold " + Math.round(expSize * 0.052) + "px 'Consolas','Microsoft YaHei',monospace";
+  ctx.font = "bold " + Math.round(expSize * 0.052) + "px 'Courier New','Microsoft YaHei',monospace";
   var endR = R_inner - expSize * 0.038;
   ctx.fillText(formatNum(minV), polarXY(cx, cy, endR, ARC_START).x,
                               polarXY(cx, cy, endR, ARC_START).y);
@@ -451,17 +451,17 @@ function exportPNG() {
   ctx.lineTo(tipR2.x, tipR2.y);
   ctx.lineTo(baseR.x, baseR.y);
   ctx.closePath();
-  ctx.fillStyle = "#1a1c20";
+  ctx.fillStyle = "#c8281e";
   ctx.fill();
 
   // 中心圆
   ctx.beginPath();
   ctx.arc(cx, cy, center_r, 0, Math.PI * 2);
-  ctx.fillStyle = "#1a1c20";
+  ctx.fillStyle = "#c8281e";
   ctx.fill();
 
   ctx.fillStyle = "#1a1c20";
-  ctx.font = "bold " + Math.round(expSize*0.052) + "px 'Consolas','Microsoft YaHei',monospace";
+  ctx.font = "bold " + Math.round(expSize*0.052) + "px 'Courier New','Microsoft YaHei',monospace";
   ctx.textAlign = "center";
   ctx.fillText(val.toFixed(2), cx, cy + center_r + expSize*0.08);
   if (title) {
