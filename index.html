@@ -2193,8 +2193,8 @@
       var pwmCmd = dir === 'stop' ? '$CAR,STOP' : '$CAR,' + dir.toUpperCase() + ',' + carSpeed;
       appendTerminal('<p class="log-tx">[TX -> CAR] ' + escapeHtml(pwmCmd) + '</p>');
       logCmd(cmd + ' | ' + pwmCmd);
-      // Send only on direction change; stop always sends
-      if (dir !== 'stop' && dir === _carLastDir) return;
+      // Send only when direction changes
+      if (dir === _carLastDir) return;
       _carLastDir = dir;
       fetch('http://renesas.local:8084/send?cmd='+encodeURIComponent(pwmCmd)).catch(function(){});
     }
