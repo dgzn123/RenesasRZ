@@ -2185,7 +2185,7 @@
     var carSpeed = 50;
     function updateSpeed(v) { carSpeed = v; var el = document.getElementById('speedVal'); if (el) el.textContent = v + '%'; }
 
-    var _carLastSend = 0;
+    var _carLastDir = null;
     function carControl(dir) {
       var map = { 'forward': 'FWD', 'backward': 'REV', 'left': 'LEFT', 'right': 'RIGHT', 'rotate_left': 'ROTATE LEFT', 'rotate_right': 'ROTATE RIGHT', 'stop': 'STOP' };
       var cmd = map[dir] || dir;
@@ -2193,10 +2193,9 @@
       var pwmCmd = dir === 'stop' ? '$CAR,STOP' : '$CAR,' + dir.toUpperCase() + ',' + carSpeed;
       appendTerminal('<p class="log-tx">[TX -> CAR] ' + escapeHtml(pwmCmd) + '</p>');
       logCmd(cmd + ' | ' + pwmCmd);
-      // Throttle to 100ms — stop always sends immediately
-      var now = Date.now();
-      if (dir !== 'stop' && now - _carLastSend < 100) return;
-      _carLastSend = now;
+      // Send only on direction change; stop always sends
+      if (dir !== 'stop' && dir === _carLastDir) return;
+      _carLastDir = dir;
       fetch('http://renesas.local:8084/send?cmd='+encodeURIComponent(pwmCmd)).catch(function(){});
     }
 
