@@ -2196,7 +2196,7 @@
       // Send only when direction changes
       if (dir === _carLastDir) return;
       _carLastDir = dir;
-      fetch('http://renesas.local:8084/send?cmd='+encodeURIComponent(pwmCmd)).catch(function(){});
+      fetch('http://192.168.2.200:8084/send?cmd='+encodeURIComponent(pwmCmd)).catch(function(){});
     }
 
     function isControlTabActive() {
@@ -2594,7 +2594,7 @@
       window.armSend = function() {
         var cmd = armCommand();
         logCmd('ARM send: ' + cmd);
-        fetch('http://renesas.local:8084/send?cmd='+encodeURIComponent(cmd)).catch(function(){});
+        fetch('http://192.168.2.200:8084/send?cmd='+encodeURIComponent(cmd)).catch(function(){});
       };
 
       // 初始化
