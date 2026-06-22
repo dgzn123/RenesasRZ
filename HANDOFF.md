@@ -45,6 +45,9 @@
 | `CuteSeek2.png` | 顶栏用户头像，需随 `index.html` 上传到网页目录 |
 | `model_alwaysonline/meter_service.py` | 常驻推理服务，加载 ONNX 模型常驻内存，8086 端口同步返回读数 |
 | `meter-service-control.php` | PHP，管理常驻推理服务启停 |
+| `broadcast_sender.py` | UDP 广播心跳发送器，每秒向局域网广播 JSON（部署在 RZ/G2L） |
+| `broadcast_receiver.py` | UDP 广播心跳接收器，在 PC/HMI Board 上监听并显示（部署在接收端） |
+| `meter_generator.html` | 仪表表盘生成器网页，参数可调+导出PNG（独立工具，不部署到开发板） |
 | `HANDOFF.md` | 本文件 |
 
 ### 开发板
@@ -334,7 +337,7 @@ scp -oHostKeyAlgorithms=+ssh-rsa C:/Users/Heda/Desktop/index/index.html C:/Users
 - **上位机**: `serial_bridge.py`（Python + pyserial，HTTP 端口 8084，桥接 fetch → UART；会 URL 解码并校验/规范化 `$ARM,<BASE>,<J1>,<J2>,<J3>`）
   - 端点: `/send?cmd=...`（发串口）、`/read`（读缓存）、`/stream`（SSE 推送）、`/status`
   - PID 文件: `/tmp/serial_bridge.pid`，配 `serial-control.php` 启停管理
-- **JS 层**: `carControl()` 已发送 `$CAR,...` 日志/命令格式，`armSend()` 调用 `fetch('http://renesas.local:8084/send?cmd=...')` 发送 `$ARM,<BASE>,<J1>,<J2>,<J3>`；旧 `armControl(action)` 仅保留提示，不再生成旧动作式 `$ARM,ACTION`
+- **JS 层**: `carControl()` 已通过 `fetch('http://192.168.2.200:8084/send?cmd=...')` 发送 `$CAR,...` 指令（去重：按住不放不重复发送，松键自动 `$CAR,STOP`）；`armSend()` 同理发送 `$ARM,...`；旧 `armControl(action)` 仅保留提示，不再生成旧动作式 `$ARM,ACTION`
 - **RA8P1 TX 引脚问题**: RESET 后 TX 线空闲电平不稳定，首次消息完整但后续丢失首字节、末尾挂移位寄存器残留 `00 80 C0 E0 F0 F8 FC FE`。根因是 TX 脚无上拉。需在 FSP Pin Configuration 给 TXD 开 Pull-up，UART 初始化后加 50ms 延时
 
 ## 机械臂运动学仿真
