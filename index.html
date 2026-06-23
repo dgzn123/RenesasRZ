@@ -2190,7 +2190,7 @@
       var map = { 'forward': 'FWD', 'backward': 'REV', 'left': 'LEFT', 'right': 'RIGHT', 'rotate_left': 'ROTATE LEFT', 'rotate_right': 'ROTATE RIGHT', 'stop': 'STOP' };
       var cmd = map[dir] || dir;
       showToast(cmd + ' (Speed ' + carSpeed + '%)');
-      var pwmCmd = dir === 'stop' ? '$CAR,STOP' : '$CAR,' + dir.toUpperCase() + ',' + carSpeed;
+      var pwmCmd = dir === 'stop' ? '$CAR,STOP,0' : '$CAR,' + dir.toUpperCase() + ',' + carSpeed;
       appendTerminal('<p class="log-tx">[TX -> CAR] ' + escapeHtml(pwmCmd) + '</p>');
       logCmd(cmd + ' | ' + pwmCmd);
       // Send only when direction changes

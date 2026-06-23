@@ -150,8 +150,10 @@ class H(http.server.BaseHTTPRequestHandler):
 
 def main():
     global ser
+    import os
     ser = serial.Serial(SERIAL_PORT, BAUD, timeout=0.05)
     ser.reset_input_buffer()
+    os.system(f'stty -F {SERIAL_PORT} -onlcr 2>/dev/null')  # 禁止 \n → \r\n 转换
     threading.Thread(target=reader, daemon=True).start()
 
     Svr = type('S', (ThreadingMixIn, http.server.HTTPServer), {'daemon_threads': True})
