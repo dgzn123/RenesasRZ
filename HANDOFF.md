@@ -330,14 +330,15 @@ scp -oHostKeyAlgorithms=+ssh-rsa C:/Users/Heda/Desktop/index/index.html C:/Users
 - **物理连接**: RZ/G2L `/dev/ttySC0` ↔ RA8P1 UART，115200bps，TX/RX/GND 三线交叉接
 - **波特率确认**: RA8P1 实际波特率 115200（用 `serial-scan.py` 遍历 9600~460800 确认）
 - **协议格式**:
-  - 小车: `$CAR,FORWARD,50` / `$CAR,STOP` / `$CAR,LEFT,30` / `$CAR,ROTATE_LEFT,40` / `$CAR,ROTATE_RIGHT,40`（麦轮原地旋转）
+  - 小车: `$CAR,FORWARD,50` / `$CAR,STOP,0` / `$CAR,LEFT,30` / `$CAR,ROTATE_LEFT,40` / `$CAR,ROTATE_RIGHT,40`（麦轮原地旋转；STOP 必须带速度 0）
   - 机械臂: `$ARM,<BASE>,<J1>,<J2>,<J3>`（BASE 为底座 360° 舵机相对角，-180°~180°，0°居中；J1/J2/J3 为三个舵机关节角，逗号分隔，整数度数；旧 `$ARM,<J1>,<J2>,<J3>` 会由 `serial_bridge.py` 自动补 `BASE=0`）
   - 下位机上报: `$STATE,BAT,11.8` 等
 - **RA8P1 现有代码**: 已实现 `UART_CMD_Send/Recv`，hal_entry 中回显测试通过。小车有 `Motor.c`（四路 PWM 麦轮控制），机械臂舵机驱动待写
 - **上位机**: `serial_bridge.py`（Python + pyserial，HTTP 端口 8084，桥接 fetch → UART；会 URL 解码并校验/规范化 `$ARM,<BASE>,<J1>,<J2>,<J3>`）
   - 端点: `/send?cmd=...`（发串口）、`/read`（读缓存）、`/stream`（SSE 推送）、`/status`
   - PID 文件: `/tmp/serial_bridge.pid`，配 `serial-control.php` 启停管理
-- **JS 层**: `carControl()` 已通过 `fetch('http://192.168.2.200:8084/send?cmd=...')` 发送 `$CAR,...` 指令（去重：按住不放不重复发送，松键自动 `$CAR,STOP`）；`armSend()` 同理发送 `$ARM,...`；旧 `armControl(action)` 仅保留提示，不再生成旧动作式 `$ARM,ACTION`
+  - **重要**: 启动后自动执行 `stty -F /dev/ttySC0 -onlcr` 禁止 TTY 层将 `\n` 转 `\r\n`，否则 RA8P1 无法解析命令
+- **JS 层**: `carControl()` 已通过 `fetch('http://192.168.2.200:8084/send?cmd=...')` 发送 `$CAR,...` 指令（去重：按住不放不重复发送，松键自动 `$CAR,STOP,0`）；`armSend()` 同理发送 `$ARM,...`；旧 `armControl(action)` 仅保留提示，不再生成旧动作式 `$ARM,ACTION`
 - **RA8P1 TX 引脚问题**: RESET 后 TX 线空闲电平不稳定，首次消息完整但后续丢失首字节、末尾挂移位寄存器残留 `00 80 C0 E0 F0 F8 FC FE`。根因是 TX 脚无上拉。需在 FSP Pin Configuration 给 TXD 开 Pull-up，UART 初始化后加 50ms 延时
 
 ## 机械臂运动学仿真
@@ -353,3 +354,4 @@ scp -oHostKeyAlgorithms=+ssh-rsa C:/Users/Heda/Desktop/index/index.html C:/Users
 
 1. **RZ/G2L 缺 cp210x 内核模块**: STL-19P 必须用 pyusb 直驱，初始化序列见上文
 2. **雷达画面闪烁**: SSE+Canvas 渲染偶尔仍有闪烁，当前加 2px 容差缓解，待彻底修复
+3. **`serial_bridge` 需手动启动**: 网页无串口桥接启停按钮，开发板重启后需手动运行或通过 `serial-control.php?action=start` 启动（2026-06-23 已修复协议格式问题：禁止 onlcr + STOP 补速度 0）
