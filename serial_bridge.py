@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """HTTP ↔ UART 桥接 — RZ/G2L ↔ RA8P1。端口 8084，文本行协议。"""
-import http.server, serial, threading, json
+import http.server, serial, threading, json, time, termios
 from urllib.parse import parse_qs, urlsplit
 from socketserver import ThreadingMixIn
 
@@ -50,6 +50,7 @@ def normalize_cmd(cmd):
     return True, '$ARM,' + ','.join(str(n) for n in nums), ''
 
 def reader():
+    global ser
     buf = b''
     while True:
         try:
@@ -66,6 +67,15 @@ def reader():
                                 rx_lines.pop(0)
                         sse_broadcast(text)
         except Exception:
+            # 串口异常时尝试重连
+            try:
+                time.sleep(0.5)
+                ser.close()
+                ser.open()
+                ser.reset_input_buffer()
+                buf = b''
+            except Exception:
+                time.sleep(1)
             pass
 
 
@@ -94,7 +104,16 @@ class H(http.server.BaseHTTPRequestHandler):
             cmd = qs.get('cmd', [''])[0]
             ok, cmd, err = normalize_cmd(cmd)
             if ok:
-                ser.write((cmd + '\n').encode())
+                data = (cmd + '\n').encode()
+                try:
+                    ser.write(data)
+                except serial.SerialException:
+                    ser.reset_output_buffer()
+                    try:
+                        ser.write(data)
+                    except serial.SerialException:
+                        self.send_error(500, 'serial write failed')
+                        return
                 b = json.dumps({'ok': True, 'cmd': cmd}).encode()
             else:
                 b = json.dumps({'ok': False, 'error': err}).encode()
@@ -121,7 +140,6 @@ class H(http.server.BaseHTTPRequestHandler):
                 _sse_clients.append(wfile)
             try:
                 while True:
-                    import time
                     time.sleep(1)
             except Exception:
                 pass
@@ -150,10 +168,15 @@ class H(http.server.BaseHTTPRequestHandler):
 
 def main():
     global ser
-    import os
-    ser = serial.Serial(SERIAL_PORT, BAUD, timeout=0.05)
+    ser = serial.Serial(SERIAL_PORT, BAUD, timeout=0.05, rtscts=False)
     ser.reset_input_buffer()
-    os.system(f'stty -F {SERIAL_PORT} -onlcr 2>/dev/null')  # 禁止 \n → \r\n 转换
+    # 禁止 TTY 层将 \n 转换为 \r\n（用 termios 代替 stty 避免副作用）
+    try:
+        attrs = termios.tcgetattr(ser.fd)
+        attrs[1] = attrs[1] & ~termios.ONLCR
+        termios.tcsetattr(ser.fd, termios.TCSANOW, attrs)
+    except termios.error:
+        pass
     threading.Thread(target=reader, daemon=True).start()
 
     Svr = type('S', (ThreadingMixIn, http.server.HTTPServer), {'daemon_threads': True})
